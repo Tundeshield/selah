@@ -11,6 +11,7 @@ const SignIn = lazy(() => import("./pages/auth/AuthPages").then((m) => ({ defaul
 const SignUp = lazy(() => import("./pages/auth/AuthPages").then((m) => ({ default: m.SignUp })));
 const ResetPassword = lazy(() => import("./pages/auth/AuthPages").then((m) => ({ default: m.ResetPassword })));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Landing = lazy(() => import("./pages/Landing"));
 const Overview = lazy(() => import("./pages/Overview"));
 const Sermons = lazy(() => import("./pages/Sermons"));
 const UploadSermon = lazy(() => import("./pages/UploadSermon"));
@@ -48,7 +49,11 @@ function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
   if (loading) return <FullPageLoading />;
-  if (!user) return <Navigate to="/signin" replace state={{ from: loc.pathname + loc.search }} />;
+  if (!user) {
+    // Signed-out visitors to the home page see the public landing page.
+    if (loc.pathname === "/") return <Landing />;
+    return <Navigate to="/signin" replace state={{ from: loc.pathname + loc.search }} />;
+  }
   return <>{children}</>;
 }
 

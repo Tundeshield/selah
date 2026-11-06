@@ -10,7 +10,7 @@ function AuthShell({ title, subtitle, children, footer }: { title: string; subti
   return (
     <div className="grid min-h-screen bg-canvas lg:grid-cols-[1.1fr_1fr]">
       <div className="hidden flex-col justify-between border-r border-gray-200 p-12 lg:flex">
-        <Logo />
+        <Link to="/" aria-label="Selah Studio home"><Logo /></Link>
         <div className="max-w-xl">
           <div className="mb-6 inline-flex items-center rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm text-gray-800">Sermon-to-media for churches</div>
           <h1 className="text-[3.5rem] font-bold leading-[1.02] tracking-tightest text-fg xl:text-[4rem]">
@@ -26,7 +26,7 @@ function AuthShell({ title, subtitle, children, footer }: { title: string; subti
       </div>
       <div className="flex items-center justify-center px-5 py-12">
         <div className="w-full max-w-[400px]">
-          <Logo className="mb-10 lg:hidden" />
+          <Link to="/" aria-label="Selah Studio home" className="mb-10 block lg:hidden"><Logo /></Link>
           <div className="card p-7 sm:p-8">
             <h2 className="text-2xl font-semibold tracking-tight text-fg">{title}</h2>
             <p className="mt-1.5 text-[15px] text-fg-muted">{subtitle}</p>
