@@ -16,7 +16,8 @@ import { categoryOf, STAGES } from "../lib/types";
 import { transcribeWithDeepgram, Word } from "./transcribe";
 import { analyseSermon, reviseContent, writeContent, AnalysisResult } from "./ai";
 import { buildCues, fmtTime, verifyQuote, verifyScripture, windowText } from "./integrity";
-import { Aspect, buildVtt, CaptionStyle, cleanup, LogoPosition, probeMedia, renderClip, renderPodcastAudio, renderPoster } from "./render";
+import { Aspect, buildVtt, CaptionStyle, ClipRenderInput, cleanup, LogoPosition, probeMedia, renderClip, renderPodcastAudio, renderPoster } from "./render";
+import { STYLE_IDS, StyleId } from "./styles";
 import { enqueue } from "./queue";
 
 export const MAX_CLIPS = 4;
@@ -333,6 +334,7 @@ async function stageGenerate(churchId: string, sermonId: string, church: ChurchD
   // --- Video clips ---
   if (wanted.has("video") && hasTimestamps) {
     const seen: { start: number; end: number }[] = [];
+    let defaultStyle: StyleId | null | undefined;
     for (const c of ((candidates.clips || []) as AnalysisResult["clips"]).slice(0, MAX_CLIPS * 2)) {
       if (seen.length >= MAX_CLIPS) break;
       if (!Number.isInteger(c.startSegment) || !segments[c.startSegment]) continue;
@@ -341,6 +343,7 @@ async function stageGenerate(churchId: string, sermonId: string, church: ChurchD
       if (seen.some((s) => Math.min(s.end, w.end) - Math.max(s.start, w.start) > (w.end - w.start) * 0.5)) continue; // overlapping
       seen.push(w);
       const cues: Cue[] = buildCues(w.start, w.end, words, segments);
+      if (defaultStyle === undefined) defaultStyle = await defaultVideoStyle(brand);
       await add(
         "video",
         {
@@ -354,6 +357,7 @@ async function stageGenerate(churchId: string, sermonId: string, church: ChurchD
             aspectRatio: "9:16",
             captionStyle: (brand.captionStyle as CaptionStyle) || "clean",
             logoPosition: (brand.logoPlacement as LogoPosition) || "top-right",
+            ...(defaultStyle ? { videoStyle: defaultStyle, hook: String(c.title || "").slice(0, 140), endCard: true } : {}),
           },
           durationSec: Math.round(w.end - w.start),
           fromAudio: !sermon.media?.hasVideo, // audiogram: captioned waveform video
@@ -512,6 +516,15 @@ export async function finalizeSermon(churchId: string, sermonId: string) {
   });
 }
 
+/** Style for newly generated clips: the church's choice, or Bold while the videoStyles flag is on. */
+async function defaultVideoStyle(brand: Record<string, unknown>): Promise<StyleId | null> {
+  const flags = (await db.doc("config/flags").get().catch(() => null))?.data() || {};
+  if (flags.videoStyles === false) return null;
+  const pref = String(brand.videoStyle || "bold");
+  if (pref === "none") return null;
+  return (STYLE_IDS as string[]).includes(pref) ? (pref as StyleId) : "bold";
+}
+
 // ---------------------------------------------------------------------------
 // Rendering (video clips, podcast audio)
 // ---------------------------------------------------------------------------
@@ -544,13 +557,41 @@ export const renderAssetTask = onTaskDispatched<RenderPayload>(renderOpts, async
 
     if (asset.type === "video") {
       let logoFile: string | null = null;
-      if (church.logoPath && asset.content?.logoPosition !== "none" && !/\.svg$/i.test(church.logoPath)) {
+      if (church.logoPath && (asset.content?.logoPosition !== "none" || asset.content?.videoStyle) && !/\.svg$/i.test(church.logoPath)) {
         const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "logo-"));
         dirs.push(tmp);
         logoFile = path.join(tmp, path.basename(church.logoPath));
         await bucket().file(church.logoPath).download({ destination: logoFile });
       }
+      // One-click style: needs word timings, church details and an optional photo background.
+      let style: ClipRenderInput["style"] = null;
+      const styleId = asset.content?.videoStyle as StyleId | undefined;
+      if (styleId && STYLE_IDS.includes(styleId)) {
+        const { words } = await loadTranscript(churchId, asset.sermonId);
+        let bgImage: string | null = null;
+        const bgPath = asset.content?.bgPath as string | undefined;
+        if (bgPath && !sermon.media.hasVideo && bgPath.startsWith(`churches/${churchId}/media/`)) {
+          const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "bg-"));
+          dirs.push(tmp);
+          bgImage = path.join(tmp, "bg.jpg");
+          await bucket().file(bgPath).download({ destination: bgImage }).catch(() => (bgImage = null));
+        }
+        style = {
+          opts: {
+            id: styleId,
+            hook: String(asset.content?.hook ?? asset.title ?? ""),
+            endCard: asset.content?.endCard !== false,
+            churchName: String(church.name || ""),
+            sermonTitle: String(sermon.title || ""),
+            accent: church.brand?.accent || "#2ECBBE",
+            primary: church.brand?.primary || "#0B0D0E",
+          },
+          words,
+          bgImage,
+        };
+      }
       const r = await withStorageMedia(mediaPath, (url) => renderClip({
+        style,
         sourceUrl: url,
         hasVideo: !!sermon.media.hasVideo,
         start: asset.source.start,

@@ -34,6 +34,7 @@ export interface Church {
     font?: string;
     logoPlacement?: string;
     captionStyle?: string;
+    videoStyle?: string;
     graphicTemplate?: string;
   };
   content?: {

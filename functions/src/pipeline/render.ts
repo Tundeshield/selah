@@ -4,6 +4,8 @@ import * as os from "os";
 import * as path from "path";
 import ffmpegPath from "ffmpeg-static";
 import type { Cue } from "../lib/types";
+import type { Word } from "./transcribe";
+import { buildStyledAss, resolveColor, StyleOptions, STYLES } from "./styles";
 
 const FONTS_DIR = path.join(__dirname, "..", "..", "assets", "fonts");
 
@@ -126,6 +128,8 @@ export interface ClipRenderInput {
   logoPosition: LogoPosition;
   background?: string; // for audio-only sermons
   accent?: string;
+  /** One-click style. When set, replaces captionStyle-based captions. */
+  style?: { opts: StyleOptions; words: Word[]; bgImage?: string | null } | null;
 }
 
 /** Render a short clip to MP4 (H.264/AAC) with burned-in captions and optional church logo. */
@@ -139,19 +143,39 @@ export async function renderClip(input: ClipRenderInput): Promise<{ videoFile: s
   let inputs = 1;
   const filters: string[] = [];
   let v = "v0";
+  const sty = input.style ? STYLES[input.style.opts.id] : null;
+  const accent = input.accent || "#2ECBBE";
+  const endCard = !!(sty && input.style!.opts.endCard && dur > 6);
+  const endAt = endCard ? Math.max(1, dur - 2.4) : dur;
+  // Slow push-in: scale up over the clip and keep the centre.
+  const motion = (m: number) => (m > 0 ? `,scale=w='${w}*(1+${m}*t/${dur.toFixed(2)})':h=-2:eval=frame,crop=${w}:${h}` : "");
 
   if (input.hasVideo) {
-    filters.push(`[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,fps=30[v0]`);
+    filters.push(`[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,fps=30${sty ? motion(sty.motion) : ""}${sty?.grade ? `,${sty.grade}` : ""}[v0]`);
+  } else if (sty) {
+    // Styled audiogram: photo (slow zoom) or a moving gradient, with a waveform.
+    if (input.style!.bgImage) {
+      args.push("-loop", "1", "-framerate", "30", "-t", String(dur), "-i", input.style!.bgImage);
+      filters.push(`[${inputs}:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,fps=30${motion(0.1)},eq=brightness=-0.2:saturation=0.85[bg]`);
+    } else {
+      const c1 = (input.background || "#0B0D0E").replace("#", "0x");
+      args.push("-f", "lavfi", "-t", String(dur), "-i", `gradients=s=${w}x${h}:r=30:c0=0x05080A:c1=${accent.replace("#", "0x")}:c2=0x05080A:c3=${c1}:n=4:speed=0.006:x0=0:y0=0:x1=${w}:y1=${h}`);
+      filters.push(`[${inputs}:v]eq=brightness=-0.22:saturation=0.8,setsar=1[bg]`);
+    }
+    inputs++;
+    const wave = input.style!.bgImage ? "0xFFFFFF" : accent.replace("#", "0x");
+    filters.push(`[0:a]aformat=channel_layouts=mono,showwaves=s=${Math.round(w * 0.78)}x${Math.round(h * 0.14)}:mode=cline:scale=sqrt:draw=full:rate=30:colors=${wave}[wv]`);
+    filters.push(`[bg][wv]overlay=(W-w)/2:${Math.round(h * (h > w ? 0.36 : 0.3))}:shortest=1${sty.grade && !/noise/.test(sty.grade) ? `,${sty.grade}` : ""}[v0]`);
   } else {
     const bg = (input.background || "#0B0D0E").replace("#", "0x");
     args.push("-f", "lavfi", "-t", String(dur), "-i", `color=c=${bg}:s=${w}x${h}:r=30`);
     inputs++;
-    const wave = (input.accent || "#2ECBBE").replace("#", "0x");
+    const wave = accent.replace("#", "0x");
     filters.push(`[0:a]aformat=channel_layouts=mono,showwaves=s=${Math.round(w * 0.8)}x${Math.round(h * 0.18)}:mode=cline:rate=30:colors=${wave}[wv]`);
     filters.push(`[1:v][wv]overlay=(W-w)/2:(H-h)/2-${Math.round(h * 0.05)}:shortest=1[v0]`);
   }
 
-  if (input.logoFile && input.logoPosition !== "none") {
+  if (input.logoFile && (input.logoPosition !== "none" || endCard)) {
     args.push("-i", input.logoFile);
     const logoIdx = inputs++;
     const lw = Math.round(w * 0.16);
@@ -162,13 +186,40 @@ export async function renderClip(input: ClipRenderInput): Promise<{ videoFile: s
       "bottom-left": `${pad}:H-h-${pad}`,
       "bottom-right": `W-w-${pad}:H-h-${pad}`,
     };
-    filters.push(`[${logoIdx}:v]scale=${lw}:-1,format=rgba,colorchannelmixer=aa=0.92[lg]`);
-    filters.push(`[${v}][lg]overlay=${pos[input.logoPosition] || pos["top-right"]}[v1]`);
-    v = "v1";
+    const corner = input.logoPosition !== "none";
+    filters.push(`[${logoIdx}:v]format=rgba,split=2[lga][lgb]`);
+    filters.push(`[lga]scale=${lw}:-1,colorchannelmixer=aa=0.92[lg]`);
+    filters.push(`[lgb]scale=${Math.round(w * 0.26)}:-1[lgc]`);
+    if (corner) {
+      filters.push(`[${v}][lg]overlay=${pos[input.logoPosition] || pos["top-right"]}${endCard ? `:enable='lt(t,${endAt.toFixed(2)})'` : ""}[v1]`);
+      v = "v1";
+    } else filters.push(`[lg]nullsink`);
+    if (!endCard) filters.push(`[lgc]nullsink`);
   }
 
-  if (input.captionStyle !== "none" && input.cues.length) {
-    const assFile = path.join(dir, "captions.ass");
+  if (sty?.letterbox) {
+    const bh = Math.round(h * (h > w ? 0.07 : 0.1));
+    filters.push(`[${v}]drawbox=x=0:y=0:w=iw:h=${bh}:color=black:t=fill,drawbox=x=0:y=ih-${bh}:w=iw:h=${bh}:color=black:t=fill[vlb]`);
+    v = "vlb";
+  }
+
+  if (sty?.progress) {
+    const pc = resolveColor(sty.progress, { accent, primary: input.background || "#0B0D0E" })!.replace("#", "0x");
+    const ph = Math.max(6, Math.round(h * 0.006));
+    filters.push(`[${v}]drawbox=x=0:y=ih-${ph}:w='iw*t/${endAt.toFixed(2)}':h=${ph}:color=${pc}@0.95:t=fill:enable='lt(t,${endAt.toFixed(2)})'[vp]`);
+    v = "vp";
+  }
+
+  const assFile = path.join(dir, "captions.ass");
+  if (sty) {
+    await fs.writeFile(assFile, buildStyledAss(input.cues, input.style!.words, input.start, dur, { w, h }, { ...input.style!.opts, accent }, !input.hasVideo));
+    filters.push(`[${v}]subtitles=${escapeFilterPath(assFile)}:fontsdir=${escapeFilterPath(FONTS_DIR)}[v2]`);
+    v = "v2";
+    if (endCard && input.logoFile) {
+      filters.push(`[${v}][lgc]overlay=(W-w)/2:${Math.round(h * 0.56)}-h-${Math.round(h * 0.06)}:enable='gte(t,${(endAt + 0.3).toFixed(2)})'[v3]`);
+      v = "v3";
+    }
+  } else if (input.captionStyle !== "none" && input.cues.length) {
     await fs.writeFile(assFile, buildAss(input.cues, input.aspect, input.captionStyle, input.accent));
     filters.push(`[${v}]subtitles=${escapeFilterPath(assFile)}:fontsdir=${escapeFilterPath(FONTS_DIR)}[v2]`);
     v = "v2";

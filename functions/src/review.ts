@@ -9,10 +9,11 @@ import { enqueue } from "./pipeline/queue";
 import { verifyQuote, windowText } from "./pipeline/integrity";
 import { refreshStatuses } from "./publishing";
 import { finalizeSermon } from "./pipeline/tasks";
+import { STYLE_IDS } from "./pipeline/styles";
 
 const opts = { region: REGION };
 
-const RENDER_KEYS = ["cues", "aspectRatio", "captionStyle", "logoPosition"];
+const RENDER_KEYS = ["cues", "aspectRatio", "captionStyle", "logoPosition", "videoStyle", "hook", "endCard", "bgPath"];
 const MINOR_KEYS = ["socialCaption", "title"];
 
 const s = (v: unknown, max = 20000) => (typeof v === "string" ? v.slice(0, max) : "");
@@ -66,6 +67,13 @@ function sanitizeContent(type: string, current: DocumentData, patch: Record<stri
       pick("aspectRatio", (v) => (["9:16", "1:1", "16:9"].includes(String(v)) ? v : "9:16"));
       pick("captionStyle", (v) => (["clean", "bold", "boxed", "none"].includes(String(v)) ? v : "clean"));
       pick("logoPosition", (v) => (["top-left", "top-right", "bottom-left", "bottom-right", "none"].includes(String(v)) ? v : "top-right"));
+      pick("videoStyle", (v) => ((STYLE_IDS as string[]).includes(String(v)) ? v : null));
+      pick("hook", (v) => s(v, 140));
+      pick("endCard", (v) => v !== false);
+      pick("bgPath", (v) => {
+        const p = s(v, 300);
+        return p.startsWith(`churches/${churchId}/media/`) && !p.includes("..") ? p : null;
+      });
       pick("cues", (v) =>
         (Array.isArray(v) ? v : []).slice(0, 400).map((c: any): Cue => ({
           start: Math.max(0, Number(c.start) || 0),

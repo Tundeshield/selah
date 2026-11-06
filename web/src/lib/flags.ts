@@ -6,13 +6,15 @@ import { db } from "./firebase";
  * Feature flags live in the Firestore document `config/flags`, so they can be
  * switched on or off from the Firebase console without a redeploy.
  *   photoEditor: Media library, photo editor, photo backgrounds for quote graphics
+ *   videoStyles: one-click video styles (on unless set to false)
  */
 export interface Flags {
   photoEditor: boolean;
+  videoStyles: boolean;
 }
 
 const KEY = "selah.flags";
-const DEFAULTS: Flags = { photoEditor: false };
+const DEFAULTS: Flags = { photoEditor: false, videoStyles: true };
 
 function cached(): Flags {
   try {
@@ -33,7 +35,7 @@ function start() {
     doc(db, "config", "flags"),
     (snap) => {
       const d = snap.data() || {};
-      current = { photoEditor: d.photoEditor === true };
+      current = { photoEditor: d.photoEditor === true, videoStyles: d.videoStyles !== false };
       try {
         localStorage.setItem(KEY, JSON.stringify(current));
       } catch {

@@ -12,9 +12,11 @@ import { errMessage, fmtClock, fmtDuration, fmtRelative, tsDate } from "../lib/f
 import { GRAPHIC_SIZES, TEMPLATES, drawBackground } from "../lib/graphic";
 import { useFlags } from "../lib/flags";
 import { PhotoBackgroundPicker } from "../components/PhotoBackground";
+import { StyleGrid, VideoStyleId } from "../components/VideoStylePicker";
+import { useMediaLibrary } from "./Media";
 import type { Asset, AssetVersion, Cue, Revision, Sermon } from "../lib/types";
-import { Button, Card, EmptyState, Input, Modal, Notice, PageLoading, Select, Tabs, Textarea, useToast } from "../components/ui";
-import { AssetStatusBadge, GraphicCanvas, TypeIcon } from "../components/bits";
+import { Button, Card, Checkbox, EmptyState, Input, Modal, Notice, PageLoading, Select, Tabs, Textarea, useToast } from "../components/ui";
+import { AssetStatusBadge, GraphicCanvas, StorageImage, TypeIcon } from "../components/bits";
 import { RequestChangesModal } from "./ContentStudio";
 import { MarkPublishedModal, ScheduleModal } from "../components/PublishModals";
 import { format } from "date-fns";
@@ -446,8 +448,29 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
       const v = Math.max(0, Math.min(max, +(src[k] + d).toFixed(2)));
       setDraft({ ...draft, source: { ...src, [k]: v } });
     };
+    const audioOnly = sermon?.media?.hasVideo === false || !!asset.fromAudio;
     return (
       <>
+        {flags.videoStyles && (
+          <div className="rounded-xl bg-gray-50 p-4 ring-1 ring-gray-200">
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <span className="text-[0.94rem] font-semibold text-fg">Style</span>
+              <span className="text-xs text-fg-muted">Pick one, then save to render</span>
+            </div>
+            <StyleGrid
+              value={(c.videoStyle as VideoStyleId) || null}
+              onChange={(v) => setC(v ? { videoStyle: v, hook: c.hook ?? draft.title, endCard: c.endCard ?? true } : { videoStyle: null })}
+              bgPath={audioOnly ? (c.bgPath ? String(c.bgPath).replace(/photo\.jpg$/, "thumb.jpg") : null) : sermon?.thumbnailPath || asset.media?.thumbnailPath}
+            />
+            {c.videoStyle && (
+              <div className="mt-4 space-y-3">
+                <Input label="Hook title" hint="Shown big for the first 3 seconds so people stop scrolling. Leave empty for none." value={c.hook ?? ""} maxLength={140} onChange={(e) => setC({ hook: e.target.value })} />
+                <Checkbox checked={c.endCard !== false} onChange={(v) => setC({ endCard: v })} label="End card with church name and sermon title" />
+                {audioOnly && flags.photoEditor && <AudiogramBackground value={c.bgPath || null} onChange={(p) => setC({ bgPath: p })} />}
+              </div>
+            )}
+          </div>
+        )}
         <Textarea label="Social caption" value={c.socialCaption || ""} onChange={(e) => setC({ socialCaption: e.target.value })} rows={3} />
         <div>
           <span className="label">Clip timing</span>
@@ -471,12 +494,14 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
             <option value="1:1">Square 1:1</option>
             <option value="16:9">Landscape 16:9</option>
           </Select>
-          <Select label="Caption style" value={c.captionStyle} onChange={(e) => setC({ captionStyle: e.target.value })}>
-            <option value="clean">Clean</option>
-            <option value="bold">Bold</option>
-            <option value="boxed">Boxed</option>
-            <option value="none">No captions</option>
-          </Select>
+          {!(flags.videoStyles && c.videoStyle) && (
+            <Select label="Caption style" value={c.captionStyle} onChange={(e) => setC({ captionStyle: e.target.value })}>
+              <option value="clean">Clean</option>
+              <option value="bold">Bold</option>
+              <option value="boxed">Boxed</option>
+              <option value="none">No captions</option>
+            </Select>
+          )}
           <Select label="Logo" value={c.logoPosition} onChange={(e) => setC({ logoPosition: e.target.value })}>
             <option value="top-right">Top right</option>
             <option value="top-left">Top left</option>
@@ -677,4 +702,22 @@ function TemplateSwatch({ id, accent, selected }: { id: string; accent?: string;
     ctx.fillText("“", 80, 112);
   }, [id, accent]);
   return <canvas ref={ref} className={clsx("aspect-square w-full rounded-lg ring-1 ring-black/10 transition", selected ? "outline outline-2 outline-offset-2 outline-brand-500" : "group-hover:ring-black/30")} />;
+}
+
+function AudiogramBackground({ value, onChange }: { value: string | null; onChange: (p: string | null) => void }) {
+  const lib = useMediaLibrary();
+  if (!lib.data.length) return <p className="text-xs text-fg-muted">Tip: add photos in <Link to="/media" className="font-medium underline">Media</Link> to use one behind this audiogram.</p>;
+  return (
+    <div>
+      <div className="label">Background</div>
+      <div className="grid grid-cols-6 gap-2">
+        <button type="button" onClick={() => onChange(null)} aria-pressed={!value} className={clsx("flex aspect-square items-center justify-center rounded-lg bg-gradient-to-br from-[#10181a] to-[#05080a] text-[0.625rem] font-medium text-white", !value ? "outline outline-2 outline-offset-2 outline-brand-500" : "ring-1 ring-black/10")}>Motion</button>
+        {lib.data.slice(0, 11).map((m) => (
+          <button key={m.id} type="button" onClick={() => onChange(m.path)} aria-pressed={value === m.path} aria-label={m.name} className={clsx("aspect-square overflow-hidden rounded-lg", value === m.path ? "outline outline-2 outline-offset-2 outline-brand-500" : "ring-1 ring-black/10")}>
+            <StorageImage path={m.thumbPath} alt="" className="h-full w-full object-cover" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }

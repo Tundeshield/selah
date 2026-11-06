@@ -1,3 +1,5 @@
+import { useFlags } from "../lib/flags";
+import { VIDEO_STYLES, VIDEO_STYLE_IDS } from "../components/VideoStylePicker";
 import { FormEvent, useEffect, useState } from "react";
 import { collection, query, where } from "firebase/firestore";
 import { ImagePlus, Trash2, UserPlus, Copy } from "lucide-react";
@@ -173,6 +175,7 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
 
 function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }) {
   const { churchId } = useChurch();
+  const flags = useFlags();
   const b = church.brand || {};
   const f = useForm({
     primary: b.primary || "#0B0D0E",
@@ -181,6 +184,7 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
     font: b.font || "Archivo",
     logoPlacement: b.logoPlacement || "top-right",
     captionStyle: b.captionStyle || "clean",
+    videoStyle: b.videoStyle || "bold",
     graphicTemplate: b.graphicTemplate || "cream",
   });
   const { busy, save } = useSaver();
@@ -199,7 +203,13 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
             <option>Archivo</option>
             <option>Inter</option>
           </Select>
-          <Select label="Default caption style" value={f.v.captionStyle} onChange={(e) => f.setV({ ...f.v, captionStyle: e.target.value })}>
+          {flags.videoStyles && (
+            <Select label="Style for new clips" value={f.v.videoStyle} onChange={(e) => f.setV({ ...f.v, videoStyle: e.target.value })} hint="Applied automatically when a sermon is processed. You can change it per clip.">
+              {VIDEO_STYLE_IDS.map((id) => <option key={id} value={id}>{VIDEO_STYLES[id].label}</option>)}
+              <option value="none">Basic (captions only)</option>
+            </Select>
+          )}
+          <Select label={flags.videoStyles ? "Caption style for Basic clips" : "Default caption style"} value={f.v.captionStyle} onChange={(e) => f.setV({ ...f.v, captionStyle: e.target.value })}>
             <option value="clean">Clean</option>
             <option value="bold">Bold</option>
             <option value="boxed">Boxed</option>

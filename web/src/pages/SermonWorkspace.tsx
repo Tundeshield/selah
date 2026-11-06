@@ -12,6 +12,9 @@ import { CONTENT_TYPE_OPTIONS, STAGE_LABELS, EXT_MIME } from "../lib/constants";
 import { errMessage, fmtBytes, fmtClock, fmtDuration, fmtServiceDate } from "../lib/format";
 import { parseTranscript } from "../lib/transcriptImport";
 import type { Segment, Sermon, StageName, Transcript } from "../lib/types";
+import { useFlags } from "../lib/flags";
+import { VIDEO_STYLES, VIDEO_STYLE_IDS, VideoStyleId } from "../components/VideoStylePicker";
+import type { Asset } from "../lib/types";
 import { Button, Card, Checkbox, EmptyState, Input, Modal, Notice, PageLoading, Tabs, Textarea, useToast } from "../components/ui";
 import { SermonStatusBadge } from "../components/bits";
 import { AssetCard } from "../components/AssetCard";
@@ -34,6 +37,7 @@ export default function SermonWorkspace() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const playerRef = useRef<HTMLVideoElement & HTMLAudioElement>(null);
+  const flags = useFlags();
   const sermonAssets = useMemo(() => assets.filter((a) => a.sermonId === sermonId), [assets, sermonId]);
 
   if (sermonQ.loading) return <PageLoading />;
@@ -190,7 +194,10 @@ export default function SermonWorkspace() {
       {tab === "summary" && <SummaryPanel sermon={sermon} onSeek={seek} />}
       {tab === "content" && (
         sermonAssets.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{sermonAssets.map((a) => <AssetCard key={a.id} asset={a} />)}</div>
+          <>
+            {flags.videoStyles && can("contributor") && <ApplyStyleBar churchId={churchId} clips={sermonAssets.filter((a) => a.type === "video")} />}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{sermonAssets.map((a) => <AssetCard key={a.id} asset={a} />)}</div>
+          </>
         ) : (
           <EmptyState title="No content yet">{processing ? "Content will appear here as it is generated." : "Nothing has been generated from this sermon yet."}</EmptyState>
         )
@@ -565,5 +572,49 @@ function GenerateMoreModal({ open, onClose, churchId, sermonId }: { open: boolea
         {opts.map((o) => <Checkbox key={o.id} checked={types.includes(o.id)} onChange={(v) => setTypes(v ? [...types, o.id] : types.filter((t) => t !== o.id))} label={o.label} />)}
       </div>
     </Modal>
+  );
+}
+
+/** One-click: give every clip from this sermon the same style and re-render them. */
+function ApplyStyleBar({ churchId, clips }: { churchId: string; clips: Asset[] }) {
+  const toast = useToast();
+  const current = clips.length && clips.every((c) => c.content?.videoStyle === clips[0].content?.videoStyle) ? ((clips[0].content?.videoStyle as VideoStyleId) || null) : undefined;
+  const [pick, setPick] = useState<VideoStyleId | null>(current ?? "bold");
+  const [busy, setBusy] = useState(false);
+  if (!clips.length) return null;
+  const ready = clips.filter((c) => c.status !== "processing");
+  const apply = async () => {
+    setBusy(true);
+    let done = 0;
+    try {
+      for (const a of ready) {
+        if ((a.content?.videoStyle || null) === pick) continue;
+        await api.updateAsset({ churchId, assetId: a.id, expectedVersion: a.version, patch: { content: pick ? { videoStyle: pick, hook: a.content?.hook ?? a.title, endCard: a.content?.endCard ?? true } : { videoStyle: null } } });
+        done++;
+      }
+      toast(done ? `Re-rendering ${done} clip${done === 1 ? "" : "s"} in ${pick ? VIDEO_STYLES[pick].label : "Basic"}` : "All clips already use this style", "success");
+    } catch (e) {
+      toast(errMessage(e), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl bg-white p-4 ring-1 ring-gray-200">
+      <div className="min-w-0">
+        <div className="text-[0.94rem] font-semibold text-fg">Clip style</div>
+        <div className="text-xs text-fg-muted">{current === undefined ? "Clips use different styles" : `All clips: ${current ? VIDEO_STYLES[current].label : "Basic"}`}</div>
+      </div>
+      <div className="flex flex-1 flex-wrap gap-1.5">
+        {[...VIDEO_STYLE_IDS, null].map((id) => (
+          <button key={id ?? "none"} type="button" onClick={() => setPick(id)} aria-pressed={pick === id} className={clsx("rounded-full px-3 py-1.5 text-[0.8125rem] font-medium ring-1 transition", pick === id ? "bg-ink text-white ring-ink" : "bg-white text-fg ring-gray-200 hover:ring-gray-400")}>
+            {id ? VIDEO_STYLES[id].label : "Basic"}
+          </button>
+        ))}
+      </div>
+      <Button size="sm" loading={busy} disabled={!ready.length || pick === current} onClick={apply}>
+        Apply to {ready.length} clip{ready.length === 1 ? "" : "s"}
+      </Button>
+    </div>
   );
 }

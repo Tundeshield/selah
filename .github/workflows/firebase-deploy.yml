@@ -134,3 +134,14 @@ jobs:
           if [ "$CODE" = "200" ]; then echo "Created config/flags (photoEditor: on)";
           elif [ "$CODE" = "409" ]; then echo "config/flags already exists — left unchanged";
           else echo "::warning::Could not create config/flags (HTTP $CODE)"; cat /tmp/flags.json; fi
+
+      - name: Add new feature flags (only ones not already set)
+        run: |
+          T=$(gcloud auth print-access-token)
+          DOC="https://firestore.googleapis.com/v1/projects/${{ steps.project.outputs.id }}/databases/(default)/documents/config/flags"
+          CUR=$(curl -s "$DOC" -H "Authorization: Bearer $T")
+          for F in videoStyles; do
+            if echo "$CUR" | grep -q "\"$F\""; then echo "$F already set — left unchanged"; continue; fi
+            curl -s -o /dev/null -w "$F → %{http_code}\n" -X PATCH "$DOC?updateMask.fieldPaths=$F" -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+              -d "{\"fields\":{\"$F\":{\"booleanValue\":true}}}"
+          done
