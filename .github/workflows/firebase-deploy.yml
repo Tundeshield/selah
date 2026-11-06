@@ -1,0 +1,87 @@
+name: Deploy Firebase backend
+
+# Deploys Firestore/Storage rules, indexes and Cloud Functions to Firebase.
+# Runs on every push to main that touches the backend, or manually from the
+# Actions tab ("Run workflow").
+#
+# Required repository secret:
+#   FIREBASE_SERVICE_ACCOUNT  – JSON key of a service account in the Firebase project
+# Optional repository secrets (set to the real keys when you have them):
+#   DEEPGRAM_API_KEY, ANTHROPIC_API_KEY  – default to "unset" (integration shown as not configured)
+# Optional repository variable:
+#   FIREBASE_PROJECT_ID – defaults to the project in .firebaserc
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "functions/**"
+      - "firestore.rules"
+      - "firestore.indexes.json"
+      - "storage.rules"
+      - "firebase.json"
+      - ".github/workflows/firebase-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Check service account secret
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::error::Add the FIREBASE_SERVICE_ACCOUNT secret (Settings → Secrets and variables → Actions). See README → Deploying the backend."
+            exit 1
+          fi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Install
+        run: |
+          npm install -g firebase-tools@14
+          npm ci --prefix functions
+
+      - name: Build functions
+        run: npm run build --prefix functions
+
+      - name: Resolve project
+        id: project
+        run: |
+          P="${{ vars.FIREBASE_PROJECT_ID }}"
+          if [ -z "$P" ]; then P=$(node -p "require('./.firebaserc').projects.default"); fi
+          echo "id=$P" >> "$GITHUB_OUTPUT"
+          echo "Deploying to Firebase project: $P"
+
+      - name: Set function secrets
+        env:
+          DEEPGRAM: ${{ secrets.DEEPGRAM_API_KEY }}
+          ANTHROPIC: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -e
+          umask 077
+          printf '%s' "${DEEPGRAM:-unset}" > /tmp/deepgram
+          printf '%s' "${ANTHROPIC:-unset}" > /tmp/anthropic
+          firebase functions:secrets:set DEEPGRAM_API_KEY --data-file /tmp/deepgram --project "${{ steps.project.outputs.id }}" --non-interactive --force
+          firebase functions:secrets:set ANTHROPIC_API_KEY --data-file /tmp/anthropic --project "${{ steps.project.outputs.id }}" --non-interactive --force
+          rm -f /tmp/deepgram /tmp/anthropic
+
+      - name: Deploy rules, indexes and functions
+        run: firebase deploy --only firestore,storage,functions --project "${{ steps.project.outputs.id }}" --non-interactive --force

@@ -64,6 +64,10 @@ Optional non-secret settings: copy `functions/.env.example` to `functions/.env` 
 
 ### 3. Deploy the backend
 
+**Automatic (recommended, nothing to install):** `.github/workflows/firebase-deploy.yml` deploys rules, indexes and functions from GitHub Actions on every push to `main` that touches the backend, or on demand from the Actions tab. It needs one repository secret, `FIREBASE_SERVICE_ACCOUNT` (a service-account JSON key from the Firebase project). Add `DEEPGRAM_API_KEY` and `ANTHROPIC_API_KEY` as repository secrets when you have them; until then they're deployed as `unset`.
+
+**Manual alternative:**
+
 ```bash
 cd functions && npm ci && cd ..
 firebase deploy --only firestore,storage,functions
