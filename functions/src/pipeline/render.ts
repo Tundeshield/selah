@@ -71,15 +71,15 @@ function hexToAss(hex: string, alpha = "00") {
   return `&H${alpha}${h.slice(4, 6)}${h.slice(2, 4)}${h.slice(0, 2)}`.toUpperCase();
 }
 
-export function buildAss(cues: Cue[], aspect: Aspect, style: CaptionStyle, accent = "#C5A56A"): string {
+export function buildAss(cues: Cue[], aspect: Aspect, style: CaptionStyle, accent = "#418FAE"): string {
   const { w, h } = ASPECTS[aspect];
   const size = Math.round((aspect === "16:9" ? 54 : 64) * (style === "bold" ? 1.15 : 1));
   const marginV = aspect === "9:16" ? Math.round(h * 0.22) : Math.round(h * 0.1);
   const borderStyle = style === "boxed" ? 3 : 1;
   const outline = style === "boxed" ? 14 : style === "bold" ? 4 : 2;
-  const back = style === "boxed" ? hexToAss("#20342C", "30") : hexToAss("#000000", "80");
+  const back = style === "boxed" ? hexToAss("#18181B", "30") : hexToAss("#000000", "80");
   const primary = hexToAss("#FFFFFF");
-  const outlineColour = style === "boxed" ? hexToAss("#20342C", "30") : hexToAss("#000000", "40");
+  const outlineColour = style === "boxed" ? hexToAss("#18181B", "30") : hexToAss("#000000", "40");
   const bold = style === "bold" ? -1 : 0;
   const header = `[Script Info]
 ScriptType: v4.00+
@@ -140,10 +140,10 @@ export async function renderClip(input: ClipRenderInput): Promise<{ videoFile: s
   if (input.hasVideo) {
     filters.push(`[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,fps=30[v0]`);
   } else {
-    const bg = (input.background || "#20342C").replace("#", "0x");
+    const bg = (input.background || "#18181B").replace("#", "0x");
     args.push("-f", "lavfi", "-t", String(dur), "-i", `color=c=${bg}:s=${w}x${h}:r=30`);
     inputs++;
-    const wave = (input.accent || "#C5A56A").replace("#", "0x");
+    const wave = (input.accent || "#418FAE").replace("#", "0x");
     filters.push(`[0:a]aformat=channel_layouts=mono,showwaves=s=${Math.round(w * 0.8)}x${Math.round(h * 0.18)}:mode=cline:rate=30:colors=${wave}[wv]`);
     filters.push(`[1:v][wv]overlay=(W-w)/2:(H-h)/2-${Math.round(h * 0.05)}:shortest=1[v0]`);
   }

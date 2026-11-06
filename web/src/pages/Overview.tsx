@@ -79,40 +79,40 @@ export default function Overview() {
 
       {latest && (
         <section aria-labelledby="latest-h" className="mb-10">
-          <h2 id="latest-h" className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-charcoal-400">Latest sermon</h2>
+          <h2 id="latest-h" className="mb-3 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Latest sermon</h2>
           <Card className="overflow-hidden md:flex">
-            <div className="aspect-video bg-forest md:aspect-auto md:w-[300px] md:shrink-0">
+            <div className="aspect-video border-b border-gray-200 bg-brand-50 md:aspect-auto md:w-[300px] md:shrink-0 md:border-b-0 md:border-r">
               <StorageImage
                 path={latest.thumbnailPath}
                 alt=""
                 className="h-full w-full object-cover"
-                fallback={<div className="flex h-full min-h-[160px] w-full items-center justify-center text-gold"><Mic2 className="h-10 w-10" /></div>}
+                fallback={<div className="flex h-full min-h-[160px] w-full items-center justify-center text-brand-500"><Mic2 className="h-10 w-10" /></div>}
               />
             </div>
             <div className="flex flex-1 flex-col gap-4 p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="font-serif text-2xl leading-tight text-forest">{latest.title}</h3>
-                  <p className="mt-1 text-sm text-charcoal-500">
+                  <h3 className="font-semibold tracking-tight text-2xl leading-tight text-fg">{latest.title}</h3>
+                  <p className="mt-1 text-sm text-fg-muted">
                     {latest.preacher || "—"} · {fmtServiceDate(latest.serviceDate)} · {fmtDuration(latest.durationSec)}
                   </p>
                 </div>
                 <SermonStatusBadge status={latest.status} />
               </div>
               {["processing", "queued"].includes(latest.status) && (
-                <p className="text-sm text-charcoal-500">{STAGE_LABELS[latest.processing?.stage || "probe"] || "Processing"}… You can leave this page — we'll notify you when content is ready.</p>
+                <p className="text-sm text-fg-muted">{STAGE_LABELS[latest.processing?.stage || "probe"] || "Processing"}… You can leave this page — we'll notify you when content is ready.</p>
               )}
               {latest.processing?.error && ["failed", "needs_configuration"].includes(latest.status) && <Notice tone={latest.status === "failed" ? "error" : "warn"}>{latest.processing.error}</Notice>}
               {latestAssets.length > 0 && (
                 <div className="grid grid-cols-2 gap-4 sm:max-w-md">
                   <div>
-                    <div className="text-2xl font-semibold text-forest">{latestAssets.length}</div>
-                    <div className="text-[13px] text-charcoal-500">Generated assets</div>
+                    <div className="text-2xl font-semibold text-fg">{latestAssets.length}</div>
+                    <div className="text-[13px] text-fg-muted">Generated assets</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-semibold text-forest">{reviewed}<span className="text-base font-normal text-charcoal-400"> / {latestAssets.length}</span></div>
-                    <div className="text-[13px] text-charcoal-500">Reviewed</div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-cream-200"><div className="h-full rounded-full bg-sage-500" style={{ width: `${(reviewed / Math.max(1, latestAssets.length)) * 100}%` }} /></div>
+                    <div className="text-2xl font-semibold text-fg">{reviewed}<span className="text-base font-normal text-gray-500"> / {latestAssets.length}</span></div>
+                    <div className="text-[13px] text-fg-muted">Reviewed</div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-brand-500" style={{ width: `${(reviewed / Math.max(1, latestAssets.length)) * 100}%` }} /></div>
                   </div>
                 </div>
               )}
@@ -129,13 +129,13 @@ export default function Overview() {
       <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr]">
         <section aria-labelledby="review-h">
           <div className="mb-3 flex items-center justify-between">
-            <h2 id="review-h" className="text-xs font-medium uppercase tracking-[0.14em] text-charcoal-400">Awaiting review</h2>
-            <Link to="/studio?status=needs_review" className="text-sm font-medium text-forest hover:underline">Open review queue</Link>
+            <h2 id="review-h" className="text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Awaiting review</h2>
+            <Link to="/studio?status=needs_review" className="text-sm font-medium text-fg hover:underline">Open review queue</Link>
           </div>
           <Card className="p-5">
             <div className="flex items-baseline gap-2">
-              <span className="font-serif text-4xl text-forest">{needsReview.length}</span>
-              <span className="text-sm text-charcoal-500">asset{needsReview.length === 1 ? "" : "s"} need{needsReview.length === 1 ? "s" : ""} review</span>
+              <span className="font-semibold tracking-tight text-4xl text-fg">{needsReview.length}</span>
+              <span className="text-sm text-fg-muted">asset{needsReview.length === 1 ? "" : "s"} need{needsReview.length === 1 ? "s" : ""} review</span>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
@@ -144,16 +144,16 @@ export default function Overview() {
                 { k: "written", l: "Written", I: FileText },
                 { k: "audio", l: "Audio", I: Mic },
               ].map(({ k, l, I }) => (
-                <Link key={k} to={`/studio?status=needs_review&type=${k}`} className="rounded-lg bg-cream-50 px-3 py-2.5 hover:bg-sage-50">
-                  <I className="mb-1.5 h-4 w-4 text-sage-500" aria-hidden />
-                  <div className="text-lg font-semibold text-forest">{byCat(k)}</div>
-                  <div className="text-xs text-charcoal-500">{l}</div>
+                <Link key={k} to={`/studio?status=needs_review&type=${k}`} className="rounded-lg bg-gray-50 px-3 py-2.5 hover:bg-gray-50">
+                  <I className="mb-1.5 h-4 w-4 text-gray-500" aria-hidden />
+                  <div className="text-lg font-semibold text-fg">{byCat(k)}</div>
+                  <div className="text-xs text-fg-muted">{l}</div>
                 </Link>
               ))}
             </div>
           </Card>
 
-          <h2 className="mb-3 mt-8 text-xs font-medium uppercase tracking-[0.14em] text-charcoal-400">Content</h2>
+          <h2 className="mb-3 mt-8 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Content</h2>
           <div className="grid grid-cols-2 gap-3">
             <Stat label="Approved" value={count("approved")} href="/studio?status=approved" />
             <Stat label="Scheduled" value={count("scheduled")} href="/studio?status=scheduled" />
@@ -164,12 +164,12 @@ export default function Overview() {
 
         <section aria-labelledby="week-h">
           <div className="mb-3 flex items-center justify-between">
-            <h2 id="week-h" className="text-xs font-medium uppercase tracking-[0.14em] text-charcoal-400">Coming up</h2>
-            <Link to="/calendar" className="text-sm font-medium text-forest hover:underline">Open calendar</Link>
+            <h2 id="week-h" className="text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Coming up</h2>
+            <Link to="/calendar" className="text-sm font-medium text-fg hover:underline">Open calendar</Link>
           </div>
-          <Card className="divide-y divide-cream-200">
+          <Card className="divide-y divide-gray-200">
             {upcoming.length === 0 ? (
-              <div className="p-6 text-sm text-charcoal-500">
+              <div className="p-6 text-sm text-fg-muted">
                 Nothing is scheduled yet. Approve content in the <Link className="link" to="/studio">Content Studio</Link>, then schedule it for the week.
               </div>
             ) : (
@@ -177,14 +177,14 @@ export default function Overview() {
                 const d = tsDate(p.scheduledAt)!;
                 const asset = assets.find((a) => a.id === p.assetId);
                 return (
-                  <Link key={p.id} to={`/studio/${p.assetId}`} className="flex items-center gap-4 px-5 py-3.5 hover:bg-cream-50">
+                  <Link key={p.id} to={`/studio/${p.assetId}`} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50">
                     <div className="w-12 shrink-0 text-center">
-                      <div className="text-[11px] font-medium uppercase text-gold-700">{format(d, "EEE")}</div>
-                      <div className="font-serif text-xl leading-none text-forest">{format(d, "d")}</div>
+                      <div className="text-[11px] font-medium uppercase text-brand-700">{format(d, "EEE")}</div>
+                      <div className="font-semibold tracking-tight text-xl leading-none text-fg">{format(d, "d")}</div>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-forest">{p.assetTitle}</div>
-                      <div className="mt-0.5 flex items-center gap-1.5 text-xs text-charcoal-500">
+                      <div className="truncate text-sm font-medium text-fg">{p.assetTitle}</div>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-xs text-fg-muted">
                         <TypeIcon type={p.assetType} className="h-3.5 w-3.5" />
                         {ASSET_TYPE[p.assetType]?.label} · {platformLabel(p.platform)} · {format(d, "HH:mm")}
                       </div>

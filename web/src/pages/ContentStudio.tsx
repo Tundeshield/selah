@@ -83,7 +83,7 @@ export default function ContentStudio() {
         <Tabs value={status} onChange={(v) => set("status", v)} tabs={STATUS_TABS.map((t) => ({ ...t, count: base.filter((a) => matchStatus(a, t.id)).length }))} />
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
             <input className="field pl-9" placeholder="Search content" aria-label="Search content" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <Select aria-label="Content type" value={type} onChange={(e) => set("type", e.target.value)}>
@@ -105,7 +105,7 @@ export default function ContentStudio() {
           <Checkbox
             checked={selected.size > 0 && allSelectable.every((a) => selected.has(a.id))}
             onChange={(v) => setSelected(v ? new Set(allSelectable.map((a) => a.id)) : new Set())}
-            label={<span className="text-charcoal-500">Select all reviewable ({allSelectable.length})</span>}
+            label={<span className="text-fg-muted">Select all reviewable ({allSelectable.length})</span>}
           />
         </div>
       )}
@@ -134,11 +134,11 @@ export default function ContentStudio() {
       )}
 
       {selected.size > 0 && (
-        <div className="fixed inset-x-3 bottom-20 z-40 mx-auto flex max-w-2xl flex-wrap items-center gap-2 rounded-2xl bg-forest px-4 py-3 text-cream shadow-pop md:bottom-6">
+        <div className="fixed inset-x-3 bottom-20 z-40 mx-auto flex max-w-2xl flex-wrap items-center gap-2 rounded-xl bg-gray-950 px-4 py-3 text-white shadow-pop md:bottom-6">
           <span className="mr-auto text-sm"><strong>{selected.size}</strong> selected{approvable.length !== selected.size && can("editor") ? ` · ${approvable.length} can be approved` : ""}</span>
           {can("editor") && <Button size="sm" variant="gold" icon={<CheckCheck className="h-4 w-4" />} loading={busy} disabled={!approvable.length} onClick={bulkApprove}>Approve selected</Button>}
           <Button size="sm" variant="secondary" icon={<MessageSquareWarning className="h-4 w-4" />} onClick={() => setChangesOpen(true)}>Request changes</Button>
-          <button onClick={() => setSelected(new Set())} className="rounded-lg p-1.5 text-sage-200 hover:bg-forest-600" aria-label="Clear selection"><X className="h-4 w-4" /></button>
+          <button onClick={() => setSelected(new Set())} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-800 hover:text-white" aria-label="Clear selection"><X className="h-4 w-4" /></button>
         </div>
       )}
 
@@ -180,7 +180,7 @@ export function RequestChangesModal({ open, onClose, assetIds, onDone, assetType
   }
   return (
     <Modal open={open} onClose={onClose} title="Request changes" footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={submit} loading={busy}>Send for revision</Button></>}>
-      <p className="mb-4 text-sm text-charcoal-500">The current version is kept in history. Selah Studio prepares a revised version and returns it to review.</p>
+      <p className="mb-4 text-sm text-fg-muted">The current version is kept in history. Selah Studio prepares a revised version and returns it to review.</p>
       <fieldset className="mb-4">
         <legend className="label">What needs to change?</legend>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -188,7 +188,7 @@ export function RequestChangesModal({ open, onClose, assetIds, onDone, assetType
         </div>
       </fieldset>
       <Textarea label="Instructions" placeholder="e.g. Start the clip where he reads Romans 8:28, and end after “He is still working.”" value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={4} />
-      {err && <p className="mt-2 text-sm text-[#9A3B30]">{err}</p>}
+      {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
     </Modal>
   );
 }

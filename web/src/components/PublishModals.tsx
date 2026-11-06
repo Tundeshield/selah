@@ -83,7 +83,7 @@ export function ScheduleModal({ open, onClose, asset, publication, initialDate }
           <Input label="Time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
         <Textarea label="Caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={4} />
-        <p className="text-xs text-charcoal-400">Selah Studio doesn't post directly to platforms yet. At the scheduled time, this item will show as ready for manual publication — download the asset, post it, then mark it as published.</p>
+        <p className="text-xs text-gray-500">Selah Studio doesn't post directly to platforms yet. At the scheduled time, this item will show as ready for manual publication — download the asset, post it, then mark it as published.</p>
         {err && <Notice tone="error">{err}</Notice>}
       </div>
     </Modal>
@@ -114,7 +114,7 @@ export function MarkPublishedModal({ open, onClose, asset, publication }: { open
   return (
     <Modal open={open} onClose={onClose} title="Mark as published" footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={submit} loading={busy}>Confirm published</Button></>}>
       <div className="space-y-4">
-        <p className="text-sm text-charcoal-500">Confirm that you've posted “{publication?.assetTitle || asset?.title}” yourself. This is recorded as a manual publication.</p>
+        <p className="text-sm text-fg-muted">Confirm that you've posted “{publication?.assetTitle || asset?.title}” yourself. This is recorded as a manual publication.</p>
         {!publication && (
           <Select label="Platform" value={platform} onChange={(e) => setPlatform(e.target.value)}>
             {PLATFORMS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
@@ -163,7 +163,7 @@ export function MarkFailedModal({ open, onClose, publication }: { open: boolean;
       }
     >
       <Textarea label="What went wrong?" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="e.g. Instagram rejected the upload" />
-      <p className="mt-2 text-xs text-charcoal-400">You can reschedule it or mark it as published later.</p>
+      <p className="mt-2 text-xs text-gray-500">You can reschedule it or mark it as published later.</p>
     </Modal>
   );
 }

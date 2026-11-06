@@ -23,7 +23,7 @@ function ChurchMark({ size = 36 }: { size?: number }) {
   const { church } = useChurch();
   const initials = (church?.name || "?").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   return (
-    <div className="flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sage-200 text-[13px] font-semibold text-forest" style={{ width: size, height: size }}>
+    <div className="flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-brand-50 text-[13px] font-semibold text-brand-800" style={{ width: size, height: size }}>
       {church?.logoPath ? <StorageImage path={church.logoPath} alt="" className="h-full w-full object-contain p-1" fallback={<span>{initials}</span>} /> : initials}
     </div>
   );
@@ -37,16 +37,16 @@ function ChurchSwitcher() {
   return (
     <div className="relative">
       <button
-        className={clsx("flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left", many && "hover:bg-forest-600")}
+        className={clsx("flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-left shadow-card", many && "hover:bg-gray-50")}
         onClick={() => many && setOpen((o) => !o)}
         aria-haspopup={many ? "listbox" : undefined}
       >
         <ChurchMark />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold text-cream">{church?.name || "Your church"}</div>
-          <div className="text-xs text-sage-300">Church workspace</div>
+          <div className="truncate text-sm font-semibold text-fg">{church?.name || "Your church"}</div>
+          <div className="text-xs text-gray-500">Church workspace</div>
         </div>
-        {many && <ChevronsUpDown className="h-4 w-4 text-sage-300" />}
+        {many && <ChevronsUpDown className="h-4 w-4 text-gray-500" />}
       </button>
       {open && profile && (
         <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl bg-white p-1 shadow-pop" role="listbox">
@@ -70,7 +70,7 @@ function ChurchOption({ id, active, onPick }: { id: string; active: boolean; onP
     <button
       role="option"
       aria-selected={active}
-      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-forest hover:bg-sage-50"
+      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-fg hover:bg-gray-50"
       onClick={async () => {
         onPick();
         if (!active && user) {
@@ -117,25 +117,25 @@ export function NotificationsButton({ variant = "dark" }: { variant?: "dark" | "
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={clsx("relative rounded-lg p-2", variant === "dark" ? "text-sage-200 hover:bg-forest-600 hover:text-cream" : "text-forest hover:bg-sage-100")}
+        className={clsx("relative rounded-lg p-2", variant === "dark" ? "text-fg-muted hover:bg-gray-100 hover:text-fg" : "text-fg hover:bg-gray-100")}
         aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
         aria-expanded={open}
       >
         <Bell className="h-5 w-5" />
-        {unread > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-forest-900">{unread > 9 ? "9+" : unread}</span>}
+        {unread > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-white">{unread > 9 ? "9+" : unread}</span>}
       </button>
       {open && (
-        <div ref={panelRef} className="fixed inset-x-3 top-16 z-50 max-h-[70vh] overflow-hidden rounded-2xl border border-cream-300 bg-white shadow-pop md:absolute md:inset-x-auto md:bottom-auto md:left-full md:top-0 md:ml-3 md:w-[380px]">
-          <div className="flex items-center justify-between border-b border-cream-200 px-4 py-3">
-            <h2 className="font-serif text-lg text-forest">Notifications</h2>
+        <div ref={panelRef} className="fixed inset-x-3 top-16 z-50 max-h-[70vh] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-pop md:absolute md:inset-x-auto md:bottom-auto md:left-full md:top-0 md:ml-3 md:w-[380px]">
+          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+            <h2 className="font-semibold tracking-tight text-lg text-fg">Notifications</h2>
             <div className="flex items-center gap-1">
-              {unread > 0 && <button onClick={markAll} className="rounded px-2 py-1 text-xs font-medium text-forest hover:bg-sage-100">Mark all as read</button>}
-              <button onClick={() => setOpen(false)} aria-label="Close notifications" className="rounded p-1 text-charcoal-400 hover:bg-cream-200"><X className="h-4 w-4" /></button>
+              {unread > 0 && <button onClick={markAll} className="rounded px-2 py-1 text-xs font-medium text-fg hover:bg-gray-100">Mark all as read</button>}
+              <button onClick={() => setOpen(false)} aria-label="Close notifications" className="rounded p-1 text-gray-500 hover:bg-gray-100"><X className="h-4 w-4" /></button>
             </div>
           </div>
           <div className="max-h-[52vh] overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-charcoal-400">You're all caught up.</p>
+              <p className="px-4 py-10 text-center text-sm text-gray-500">You're all caught up.</p>
             ) : (
               notifications.map((n) => (
                 <button
@@ -145,21 +145,21 @@ export function NotificationsButton({ variant = "dark" }: { variant?: "dark" | "
                     setOpen(false);
                     navigate(n.link);
                   }}
-                  className={clsx("flex w-full gap-3 border-b border-cream-100 px-4 py-3 text-left hover:bg-cream-50", !n.read && "bg-sage-50/60")}
+                  className={clsx("flex w-full gap-3 border-b border-gray-100 px-4 py-3 text-left hover:bg-gray-50", !n.read && "bg-gray-50/60")}
                 >
-                  <span className={clsx("mt-1.5 h-2 w-2 shrink-0 rounded-full", n.read ? "bg-transparent" : n.type.includes("failed") ? "bg-[#B5544A]" : "bg-gold")} aria-hidden />
+                  <span className={clsx("mt-1.5 h-2 w-2 shrink-0 rounded-full", n.read ? "bg-transparent" : n.type.includes("failed") ? "bg-red-500" : "bg-brand-500")} aria-hidden />
                   <span className="min-w-0">
-                    <span className="block text-sm font-semibold text-forest">{n.title}</span>
-                    <span className="mt-0.5 block text-[13px] leading-snug text-charcoal-500">{n.message}</span>
-                    <span className="mt-1 block text-[11px] text-charcoal-400">{fmtRelative(n.createdAt)}</span>
+                    <span className="block text-sm font-semibold text-fg">{n.title}</span>
+                    <span className="mt-0.5 block text-[13px] leading-snug text-fg-muted">{n.message}</span>
+                    <span className="mt-1 block text-[11px] text-gray-500">{fmtRelative(n.createdAt)}</span>
                   </span>
                 </button>
               ))
             )}
           </div>
           {notifications.some((n) => n.read) && (
-            <div className="border-t border-cream-200 px-4 py-2 text-right">
-              <button onClick={clearRead} className="text-xs font-medium text-charcoal-400 hover:text-forest">Clear read notifications</button>
+            <div className="border-t border-gray-200 px-4 py-2 text-right">
+              <button onClick={clearRead} className="text-xs font-medium text-gray-500 hover:text-fg">Clear read notifications</button>
             </div>
           )}
         </div>
@@ -184,9 +184,9 @@ export function AppLayout() {
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[70] focus:rounded-lg focus:bg-white focus:px-3 focus:py-2">Skip to content</a>
 
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-[264px] shrink-0 flex-col bg-forest px-4 py-5 md:flex" aria-label="Primary">
+      <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col border-r border-gray-200 bg-white px-4 py-5 md:flex" aria-label="Primary">
         <div className="mb-6 flex items-center justify-between px-2">
-          <Logo light />
+          <Logo />
           <NotificationsButton />
         </div>
         <ChurchSwitcher />
@@ -198,8 +198,8 @@ export function AppLayout() {
               end={n.end}
               className={({ isActive }) =>
                 clsx(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-medium transition-colors",
-                  isActive ? "bg-cream text-forest" : "text-sage-200 hover:bg-forest-600 hover:text-cream",
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-[14.5px] font-medium transition-colors",
+                  isActive ? "bg-gray-100 text-fg" : "text-fg-muted hover:bg-gray-50 hover:text-fg",
                 )
               }
             >
@@ -209,32 +209,32 @@ export function AppLayout() {
           ))}
         </nav>
         <div className="mt-6 px-1">
-          <Button variant="gold" className="w-full" icon={<Upload className="h-4 w-4" />} onClick={() => navigate("/sermons/upload")}>
+          <Button className="w-full" icon={<Upload className="h-4 w-4" />} onClick={() => navigate("/sermons/upload")}>
             Upload sermon
           </Button>
         </div>
-        {usingEmulators && <div className="mt-4 rounded-lg bg-gold/15 px-3 py-2 text-xs text-gold-100">Development environment (emulators)</div>}
-        <div className="mt-auto flex items-center gap-3 rounded-xl px-2 py-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage-300 text-xs font-semibold text-forest">{initials}</div>
+        {usingEmulators && <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-800">Development environment (emulators)</div>}
+        <div className="mt-auto flex items-center gap-3 border-t border-gray-200 px-1 pt-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-800">{initials}</div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-cream">{name}</div>
-            <div className="text-xs capitalize text-sage-300">{member?.role || ""}</div>
+            <div className="truncate text-sm font-medium text-fg">{name}</div>
+            <div className="text-xs capitalize text-gray-500">{member?.role || ""}</div>
           </div>
-          <button onClick={signOut} className="rounded-lg p-2 text-sage-300 hover:bg-forest-600 hover:text-cream" aria-label="Sign out" title="Sign out">
+          <button onClick={signOut} className="rounded-lg p-2 text-fg-muted hover:bg-gray-100 hover:text-fg" aria-label="Sign out" title="Sign out">
             <LogOut className="h-4 w-4" />
           </button>
         </div>
       </aside>
 
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-cream-300/70 bg-cream/95 px-4 py-3 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-200/70 bg-canvas px-4 py-3 backdrop-blur md:hidden">
         <div className="flex min-w-0 items-center gap-2.5">
           <ChurchMark size={32} />
-          <span className="truncate font-serif text-lg text-forest">{church?.name || "Selah Studio"}</span>
+          <span className="truncate font-semibold tracking-tight text-lg text-fg">{church?.name || "Selah Studio"}</span>
         </div>
         <div className="flex items-center gap-1">
           <NotificationsButton variant="light" />
-          <button onClick={signOut} className="rounded-lg p-2 text-forest hover:bg-sage-100" aria-label="Sign out"><LogOut className="h-5 w-5" /></button>
+          <button onClick={signOut} className="rounded-lg p-2 text-fg hover:bg-gray-100" aria-label="Sign out"><LogOut className="h-5 w-5" /></button>
         </div>
       </header>
 
@@ -245,12 +245,12 @@ export function AppLayout() {
       </main>
 
       {/* Mobile bottom navigation */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-cream-300 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" aria-label="Primary">
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-gray-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" aria-label="Primary">
         {NAV.map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => clsx("flex flex-col items-center gap-1 py-2.5 text-[10.5px] font-medium", isActive ? "text-forest" : "text-charcoal-400")}>
+          <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => clsx("flex flex-col items-center gap-1 py-2.5 text-[10.5px] font-medium", isActive ? "text-brand-700" : "text-gray-500")}>
             {({ isActive }) => (
               <>
-                <span className={clsx("rounded-full px-3 py-1", isActive && "bg-sage-200")}><n.icon className="h-5 w-5" aria-hidden /></span>
+                <span className={clsx("rounded px-3 py-1", isActive && "bg-brand-50 text-brand-700")}><n.icon className="h-5 w-5" aria-hidden /></span>
                 {n.label.split(" ")[n.label.startsWith("Publishing") ? 1 : 0].replace("Church", "Settings")}
               </>
             )}

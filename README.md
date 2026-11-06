@@ -9,6 +9,7 @@ Selah Studio turns sermon recordings into reviewable, editable and publishable m
 | Layer | Technology |
 | --- | --- |
 | Web app | React 18 + Vite + TypeScript + Tailwind (`web/`) — hosted on **Netlify** |
+| Design system | Modelled on Chakra UI Pro: Outfit (self-hosted), zinc greys, one accent colour, small radii |
 | Auth | Firebase Authentication (email/password + Google) |
 | Database | Cloud Firestore — every church record lives under `churches/{churchId}/…` |
 | Media storage | Cloud Storage for Firebase |
@@ -99,6 +100,12 @@ npm ci && npm run dev
 ```
 
 To use the Firebase emulators set `VITE_USE_EMULATORS=true`, copy `functions/.secret.local.example` to `functions/.secret.local`, then run `firebase emulators:start`. The sidebar shows a "Development environment" label when emulators are in use. No sample sermons are hard-coded anywhere.
+
+## Design system
+
+The UI follows Chakra UI Pro's look: Outfit type, zinc greys (`#111111` text, `#52525b` muted, `#e4e4e7` borders, `#fcfcfc` page), a single accent and "sm" radii. Tokens live in `web/tailwind.config.js` and `web/src/index.css`.
+
+The accent is a CSS variable scale (`--brand-50` … `--brand-950`). Cyan is the default; switch to teal or blue by changing `data-accent` on `<html>` in `web/index.html`, or edit the values in `index.css` for any other colour.
 
 ## Supported uploads
 

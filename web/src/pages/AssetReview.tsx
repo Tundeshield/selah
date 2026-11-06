@@ -98,17 +98,17 @@ export default function AssetReview() {
 
   return (
     <>
-      <Link to="/studio" className="mb-5 inline-flex items-center gap-1.5 text-sm text-charcoal-500 hover:text-forest"><ArrowLeft className="h-4 w-4" /> Content Studio</Link>
+      <Link to="/studio" className="mb-5 inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg"><ArrowLeft className="h-4 w-4" /> Content Studio</Link>
 
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-charcoal-500">
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-fg-muted">
             <span className="inline-flex items-center gap-1.5"><TypeIcon type={asset.type} className="h-3.5 w-3.5" />{ASSET_TYPE[asset.type].label}</span>
             <span>·</span><span>Version {asset.version}</span>
             <AssetStatusBadge asset={asset} />
           </div>
           <h1 className="h-page line-clamp-2">{asset.title}</h1>
-          <p className="mt-2 text-sm text-charcoal-500">
+          <p className="mt-2 text-sm text-fg-muted">
             From <Link className="link" to={`/sermons/${asset.sermonId}`}>{asset.sermonTitle}</Link>
             {asset.source?.start !== undefined && asset.category !== "written" ? ` · ${fmtClock(asset.source.start)}–${fmtClock(asset.source.end)} in the sermon` : ""}
           </p>
@@ -152,12 +152,12 @@ export default function AssetReview() {
           <Preview asset={asset} draft={draft} canvasRef={canvasRef} sermon={sermonQ.data} />
           {assetPubs.length > 0 && (
             <Card className="mt-4 p-4">
-              <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Publication</h3>
+              <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Publication</h3>
               <ul className="space-y-1.5 text-sm">
                 {assetPubs.map((p) => (
                   <li key={p.id} className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-forest">{platformLabel(p.platform)} · {format(tsDate(p.scheduledAt)!, "EEE d MMM, HH:mm")}</span>
-                    <span className={clsx("text-xs font-medium", p.status === "failed" ? "text-[#9A3B30]" : p.status === "published" ? "text-forest" : "text-gold-700")}>
+                    <span className="text-fg">{platformLabel(p.platform)} · {format(tsDate(p.scheduledAt)!, "EEE d MMM, HH:mm")}</span>
+                    <span className={clsx("text-xs font-medium", p.status === "failed" ? "text-red-600" : p.status === "published" ? "text-fg" : "text-brand-700")}>
                       {p.status === "published" ? (p.externalUrl ? <a className="link" href={p.externalUrl} target="_blank" rel="noreferrer">Published</a> : "Published (manual)") : p.status === "failed" ? `Failed — ${p.error}` : "Scheduled · manual publication"}
                     </span>
                   </li>
@@ -172,14 +172,14 @@ export default function AssetReview() {
           <Tabs className="mb-4" value={panel} onChange={setPanel} tabs={[{ id: "edit", label: "Edit" }, { id: "source", label: "Source" }, { id: "history", label: "History", count: versions.data.length }]} />
           {panel === "edit" && (
             <Card className="p-5">
-              {!editable && asset.status !== "processing" && <p className="mb-4 text-sm text-charcoal-500">{asset.status === "changes_requested" ? "Editing is paused while the revision is prepared." : "You can view this asset but not edit it."}</p>}
+              {!editable && asset.status !== "processing" && <p className="mb-4 text-sm text-fg-muted">{asset.status === "changes_requested" ? "Editing is paused while the revision is prepared." : "You can view this asset but not edit it."}</p>}
               <fieldset disabled={!editable || busy === "save"} className="space-y-4">
                 <Input label="Title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
                 <Editor asset={asset} draft={draft} setDraft={setDraft} sermon={sermonQ.data} />
               </fieldset>
               {editable && (
-                <div className="mt-5 flex items-center justify-between gap-3 border-t border-cream-200 pt-4">
-                  <span className="text-xs text-charcoal-400">{dirty ? (approvedCurrent ? "Saving creates a new version that needs approval again." : "Unsaved changes") : `Last updated ${fmtRelative(asset.updatedAt)}${asset.updatedByName ? ` by ${asset.updatedByName}` : ""}`}</span>
+                <div className="mt-5 flex items-center justify-between gap-3 border-t border-gray-200 pt-4">
+                  <span className="text-xs text-gray-500">{dirty ? (approvedCurrent ? "Saving creates a new version that needs approval again." : "Unsaved changes") : `Last updated ${fmtRelative(asset.updatedAt)}${asset.updatedByName ? ` by ${asset.updatedByName}` : ""}`}</span>
                   <div className="flex gap-2">
                     {dirty && <Button variant="ghost" size="sm" onClick={() => setBaseVersion(null)}>Discard</Button>}
                     <Button size="sm" onClick={save} disabled={!dirty} loading={busy === "save"}>Save changes</Button>
@@ -191,25 +191,25 @@ export default function AssetReview() {
           {panel === "source" && (
             <Card className="space-y-4 p-5">
               <div>
-                <h3 className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Original sermon</h3>
+                <h3 className="mb-1 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Original sermon</h3>
                 <Link className="link" to={`/sermons/${asset.sermonId}`}>{asset.sermonTitle}</Link>
-                <p className="text-sm text-charcoal-500">{asset.preacher}</p>
+                <p className="text-sm text-fg-muted">{asset.preacher}</p>
               </div>
               {asset.transcriptExcerpt ? (
                 <div>
-                  <h3 className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">
+                  <h3 className="mb-1 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">
                     Transcript excerpt {asset.source?.start !== undefined && `· ${fmtClock(asset.source.start)}–${fmtClock(asset.source.end)}`}
                   </h3>
-                  <blockquote className="border-l-2 border-gold pl-3 text-[15px] leading-relaxed text-charcoal">{asset.transcriptExcerpt}</blockquote>
+                  <blockquote className="border-l-2 border-brand-500 pl-3 text-[15px] leading-relaxed text-gray-800">{asset.transcriptExcerpt}</blockquote>
                 </div>
               ) : (
-                <p className="text-sm text-charcoal-500">This asset draws on the whole sermon. Open the sermon to read the full transcript.</p>
+                <p className="text-sm text-fg-muted">This asset draws on the whole sermon. Open the sermon to read the full transcript.</p>
               )}
-              {asset.description && <div><h3 className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Why this moment</h3><p className="text-sm text-charcoal-500">{asset.description}</p></div>}
+              {asset.description && <div><h3 className="mb-1 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Why this moment</h3><p className="text-sm text-fg-muted">{asset.description}</p></div>}
               {(asset.content?.scriptureReferences?.length || asset.content?.scripture) && (
                 <div>
-                  <h3 className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Scripture references</h3>
-                  <p className="text-sm text-forest">{(asset.content.scriptureReferences || [asset.content.scripture]).filter(Boolean).join(", ")}</p>
+                  <h3 className="mb-1 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Scripture references</h3>
+                  <p className="text-sm text-fg">{(asset.content.scriptureReferences || [asset.content.scripture]).filter(Boolean).join(", ")}</p>
                 </div>
               )}
             </Card>
@@ -217,7 +217,7 @@ export default function AssetReview() {
           {panel === "history" && <HistoryPanel versions={versions.data} revisions={revisions.data} current={asset.version} />}
           {can("editor") && (
             <div className="mt-4 text-right">
-              <button onClick={() => setDeleteOpen(true)} className="inline-flex items-center gap-1.5 text-sm text-charcoal-400 hover:text-[#8E3B2F]"><Trash2 className="h-4 w-4" />Delete asset</button>
+              <button onClick={() => setDeleteOpen(true)} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-700"><Trash2 className="h-4 w-4" />Delete asset</button>
             </div>
           )}
         </div>
@@ -232,7 +232,7 @@ export default function AssetReview() {
         title="Delete this asset?"
         footer={<><Button variant="ghost" onClick={() => setDeleteOpen(false)}>Cancel</Button><Button variant="danger" loading={busy === "delete"} onClick={() => run("delete", async () => { await api.deleteAsset({ churchId, assetId: asset.id }); navigate("/studio", { replace: true }); }, "Asset deleted")}>Delete</Button></>}
       >
-        <p className="text-sm text-charcoal">“{asset.title}”, all its versions and any schedule entries will be removed. The sermon and its other content are not affected.</p>
+        <p className="text-sm text-gray-800">“{asset.title}”, all its versions and any schedule entries will be removed. The sermon and its other content are not affected.</p>
       </Modal>
     </>
   );
@@ -289,7 +289,7 @@ function DownloadButton({ asset, canvasRef }: { asset: Asset; canvasRef: React.M
   if (asset.category === "video" || asset.category === "audio") {
     if (!url) return null;
     return (
-      <a href={url} target="_blank" rel="noreferrer" download={`${slug(asset.title)}.${asset.category === "video" ? "mp4" : "mp3"}`} className="inline-flex h-10 items-center gap-2 rounded-lg border border-cream-300 bg-white px-4 text-sm font-medium text-forest hover:bg-sage-50">
+      <a href={url} target="_blank" rel="noreferrer" download={`${slug(asset.title)}.${asset.category === "video" ? "mp4" : "mp3"}`} className="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-fg hover:bg-gray-50">
         <Download className="h-4 w-4" /> Download
       </a>
     );
@@ -328,12 +328,12 @@ function Preview({ asset, draft, canvasRef, sermon }: { asset: Asset; draft: { t
   if (asset.category === "video") {
     const ar = asset.content?.aspectRatio || "9:16";
     return (
-      <Card className="flex items-center justify-center overflow-hidden bg-forest-900 p-4">
+      <Card className="flex items-center justify-center overflow-hidden bg-gray-950 p-4">
         {media.url && asset.status !== "processing" ? (
           <video key={media.url} src={media.url} controls playsInline preload="metadata" className={clsx("max-h-[72vh] rounded-lg bg-black", ar === "16:9" ? "w-full" : ar === "1:1" ? "aspect-square max-w-[560px]" : "aspect-[9/16] max-w-[380px]")} />
         ) : (
-          <div className={clsx("flex flex-col items-center justify-center gap-3 rounded-lg bg-forest text-sm text-sage-200", ar === "16:9" ? "aspect-video w-full" : "aspect-[9/16] w-full max-w-[340px]")}>
-            {asset.render?.status === "failed" ? <AlertTriangle className="h-6 w-6 text-gold" /> : <Loader2 className="h-6 w-6 animate-spin text-gold" />}
+          <div className={clsx("flex flex-col items-center justify-center gap-3 rounded-lg bg-gray-800 text-sm text-gray-300", ar === "16:9" ? "aspect-video w-full" : "aspect-[9/16] w-full max-w-[340px]")}>
+            {asset.render?.status === "failed" ? <AlertTriangle className="h-6 w-6 text-brand-500" /> : <Loader2 className="h-6 w-6 animate-spin text-brand-500" />}
             {asset.render?.status === "failed" ? "Rendering failed" : "Rendering clip…"}
           </div>
         )}
@@ -342,7 +342,7 @@ function Preview({ asset, draft, canvasRef, sermon }: { asset: Asset; draft: { t
   }
   if (asset.category === "graphic") {
     return (
-      <Card className="flex justify-center bg-cream-200 p-4 sm:p-8">
+      <Card className="flex justify-center bg-gray-100 p-4 sm:p-8">
         <div className={clsx("w-full shadow-pop", draft.content.size === "story" ? "max-w-[340px]" : draft.content.size === "landscape" ? "max-w-full" : "max-w-[520px]")}>
           <GraphicCanvas settings={draft.content} canvasRef={canvasRef} />
         </div>
@@ -351,11 +351,11 @@ function Preview({ asset, draft, canvasRef, sermon }: { asset: Asset; draft: { t
   }
   if (asset.category === "audio") {
     return (
-      <Card className="bg-forest p-8 text-cream">
-        <Mic2 className="mb-4 h-8 w-8 text-gold" />
-        <h2 className="font-serif text-2xl text-cream">{asset.title}</h2>
-        <p className="mt-1 text-sm text-sage-200">MP3 · 128 kbps · loudness-normalised (-16 LUFS) · {fmtDuration(asset.durationSec)}</p>
-        {media.url ? <audio src={media.url} controls className="mt-6 w-full" /> : <p className="mt-6 inline-flex items-center gap-2 text-sm text-sage-200"><Loader2 className="h-4 w-4 animate-spin" /> Preparing audio…</p>}
+      <Card className="p-8">
+        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-100 text-brand-700"><Mic2 className="h-5 w-5" /></div>
+        <h2 className="text-2xl font-semibold tracking-tight text-fg">{asset.title}</h2>
+        <p className="mt-1 text-sm text-gray-500">MP3 · 128 kbps · loudness-normalised (-16 LUFS) · {fmtDuration(asset.durationSec)}</p>
+        {media.url ? <audio src={media.url} controls className="mt-6 w-full" /> : <p className="mt-6 inline-flex items-center gap-2 text-sm text-gray-500"><Loader2 className="h-4 w-4 animate-spin" /> Preparing audio…</p>}
       </Card>
     );
   }
@@ -367,51 +367,51 @@ function WrittenPreview({ asset, c }: { asset: Asset; c: any }) {
   return (
     <Card className="p-6 sm:p-10">
       <article className="mx-auto max-w-prose">
-        <div className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-gold-700">{ASSET_TYPE[asset.type].label}</div>
+        <div className="mb-3 text-xs font-medium uppercase tracking-[0.06em] text-brand-700">{ASSET_TYPE[asset.type].label}</div>
         {asset.type === "captions" ? (
           <div className="space-y-5">
             {Object.entries(c.platforms || {}).map(([p, t]) => (
-              <div key={p} className="rounded-xl border border-cream-300 bg-cream-50 p-4">
-                <div className="mb-2 text-xs font-semibold text-forest">{platformLabel(p)}</div>
-                <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-charcoal">{String(t)}</p>
+              <div key={p} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className="mb-2 text-xs font-semibold text-fg">{platformLabel(p)}</div>
+                <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-gray-800">{String(t)}</p>
               </div>
             ))}
           </div>
         ) : (
           <>
-            <h2 className="font-serif text-3xl leading-tight text-forest">{c.title}</h2>
+            <h2 className="font-semibold tracking-tight text-3xl leading-tight text-fg">{c.title}</h2>
             {asset.type === "devotional" && (
               <>
-                <p className="mt-3 font-medium text-gold-700">{c.scripture}</p>
-                <p className="mt-5 whitespace-pre-wrap text-[16px] leading-[1.75] text-charcoal">{c.reflection}</p>
-                <h3 className="mt-7 font-serif text-xl text-forest">Apply it</h3>
-                <p className="mt-2 whitespace-pre-wrap leading-[1.75] text-charcoal">{c.application}</p>
-                <h3 className="mt-7 font-serif text-xl text-forest">Prayer</h3>
-                <p className="mt-2 whitespace-pre-wrap italic leading-[1.75] text-charcoal">{c.prayer}</p>
+                <p className="mt-3 font-medium text-brand-700">{c.scripture}</p>
+                <p className="mt-5 whitespace-pre-wrap text-[16px] leading-[1.75] text-gray-800">{c.reflection}</p>
+                <h3 className="mt-7 font-semibold tracking-tight text-xl text-fg">Apply it</h3>
+                <p className="mt-2 whitespace-pre-wrap leading-[1.75] text-gray-800">{c.application}</p>
+                <h3 className="mt-7 font-semibold tracking-tight text-xl text-fg">Prayer</h3>
+                <p className="mt-2 whitespace-pre-wrap italic leading-[1.75] text-gray-800">{c.prayer}</p>
               </>
             )}
             {asset.type === "summary" && (
               <>
-                <p className="mt-3 text-[15px] font-medium text-forest">{c.mainTheme}</p>
-                <p className="mt-5 whitespace-pre-wrap text-[16px] leading-[1.75] text-charcoal">{c.body}</p>
-                <h3 className="mt-7 font-serif text-xl text-forest">Key points</h3>
-                <ul className="mt-2 list-disc space-y-1.5 pl-5 text-charcoal">{(c.keyPoints || []).map((k: string, i: number) => <li key={i}>{k}</li>)}</ul>
-                {!!c.scriptureReferences?.length && <p className="mt-6 text-sm text-charcoal-500">Scripture: {c.scriptureReferences.join(", ")}</p>}
+                <p className="mt-3 text-[15px] font-medium text-fg">{c.mainTheme}</p>
+                <p className="mt-5 whitespace-pre-wrap text-[16px] leading-[1.75] text-gray-800">{c.body}</p>
+                <h3 className="mt-7 font-semibold tracking-tight text-xl text-fg">Key points</h3>
+                <ul className="mt-2 list-disc space-y-1.5 pl-5 text-gray-800">{(c.keyPoints || []).map((k: string, i: number) => <li key={i}>{k}</li>)}</ul>
+                {!!c.scriptureReferences?.length && <p className="mt-6 text-sm text-fg-muted">Scripture: {c.scriptureReferences.join(", ")}</p>}
               </>
             )}
             {asset.type === "article" && (
               <>
-                <p className="mt-5 whitespace-pre-wrap text-[17px] leading-[1.75] text-charcoal">{c.introduction}</p>
+                <p className="mt-5 whitespace-pre-wrap text-[17px] leading-[1.75] text-gray-800">{c.introduction}</p>
                 {(c.sections || []).map((s: { heading: string; body: string }, i: number) => (
                   <section key={i}>
-                    <h3 className="mt-8 font-serif text-2xl text-forest">{s.heading}</h3>
-                    <p className="mt-2 whitespace-pre-wrap leading-[1.75] text-charcoal">{s.body}</p>
+                    <h3 className="mt-8 font-semibold tracking-tight text-2xl text-fg">{s.heading}</h3>
+                    <p className="mt-2 whitespace-pre-wrap leading-[1.75] text-gray-800">{s.body}</p>
                   </section>
                 ))}
-                <h3 className="mt-8 font-serif text-2xl text-forest">Putting it into practice</h3>
-                <p className="mt-2 whitespace-pre-wrap leading-[1.75] text-charcoal">{c.application}</p>
-                <p className="mt-6 whitespace-pre-wrap leading-[1.75] text-charcoal">{c.conclusion}</p>
-                {!!c.scriptureReferences?.length && <p className="mt-6 text-sm text-charcoal-500">Scripture: {c.scriptureReferences.join(", ")}</p>}
+                <h3 className="mt-8 font-semibold tracking-tight text-2xl text-fg">Putting it into practice</h3>
+                <p className="mt-2 whitespace-pre-wrap leading-[1.75] text-gray-800">{c.application}</p>
+                <p className="mt-6 whitespace-pre-wrap leading-[1.75] text-gray-800">{c.conclusion}</p>
+                {!!c.scriptureReferences?.length && <p className="mt-6 text-sm text-fg-muted">Scripture: {c.scriptureReferences.join(", ")}</p>}
               </>
             )}
           </>
@@ -442,12 +442,12 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
           <span className="label">Clip timing</span>
           <div className="grid grid-cols-2 gap-3">
             {(["start", "end"] as const).map((k) => (
-              <div key={k} className="rounded-lg border border-cream-300 p-2.5">
-                <div className="mb-1 text-xs capitalize text-charcoal-400">{k}</div>
+              <div key={k} className="rounded-lg border border-gray-200 p-2.5">
+                <div className="mb-1 text-xs capitalize text-gray-500">{k}</div>
                 <div className="flex items-center justify-between gap-1">
-                  <button type="button" className="rounded p-1 hover:bg-sage-100" onClick={() => nudge(k, -1)} aria-label={`Move ${k} earlier by 1 second`}><Minus className="h-4 w-4" /></button>
-                  <span className="font-mono text-sm text-forest">{fmtClock(src[k])}</span>
-                  <button type="button" className="rounded p-1 hover:bg-sage-100" onClick={() => nudge(k, 1)} aria-label={`Move ${k} later by 1 second`}><Plus className="h-4 w-4" /></button>
+                  <button type="button" className="rounded p-1 hover:bg-gray-100" onClick={() => nudge(k, -1)} aria-label={`Move ${k} earlier by 1 second`}><Minus className="h-4 w-4" /></button>
+                  <span className="font-mono text-sm text-fg">{fmtClock(src[k])}</span>
+                  <button type="button" className="rounded p-1 hover:bg-gray-100" onClick={() => nudge(k, 1)} aria-label={`Move ${k} later by 1 second`}><Plus className="h-4 w-4" /></button>
                 </div>
               </div>
             ))}
@@ -474,12 +474,12 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
             <option value="none">Hidden</option>
           </Select>
         </div>
-        <details className="rounded-lg border border-cream-300">
-          <summary className="cursor-pointer px-3 py-2.5 text-sm font-medium text-forest">Edit on-screen captions ({(c.cues || []).length})</summary>
-          <ol className="max-h-80 space-y-2 overflow-y-auto border-t border-cream-200 p-3">
+        <details className="rounded-lg border border-gray-200">
+          <summary className="cursor-pointer px-3 py-2.5 text-sm font-medium text-fg">Edit on-screen captions ({(c.cues || []).length})</summary>
+          <ol className="max-h-80 space-y-2 overflow-y-auto border-t border-gray-200 p-3">
             {(c.cues || []).map((cue: Cue, i: number) => (
               <li key={i} className="flex items-center gap-2">
-                <span className="w-12 shrink-0 font-mono text-[11px] text-charcoal-400">{fmtClock(cue.start)}</span>
+                <span className="w-12 shrink-0 font-mono text-[11px] text-gray-500">{fmtClock(cue.start)}</span>
                 <input
                   className="field py-1.5"
                   aria-label={`Caption at ${fmtClock(cue.start)}`}
@@ -506,7 +506,7 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
           <span className="label">Template</span>
           <div className="grid grid-cols-5 gap-2">
             {Object.entries(TEMPLATES).map(([id, t]) => (
-              <button key={id} type="button" onClick={() => setC({ template: id })} className={clsx("flex aspect-square items-center justify-center rounded-lg border-2 font-serif text-lg", c.template === id ? "border-forest" : "border-transparent")} style={{ background: t.bg, color: t.fg }} aria-label={t.label} aria-pressed={c.template === id}>
+              <button key={id} type="button" onClick={() => setC({ template: id })} className={clsx("flex aspect-square items-center justify-center rounded-lg border-2 font-semibold tracking-tight text-lg", c.template === id ? "border-brand-500" : "border-transparent")} style={{ background: t.bg, color: t.fg }} aria-label={t.label} aria-pressed={c.template === id}>
                 “
               </button>
             ))}
@@ -557,7 +557,7 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
       <>
         <Textarea label="Introduction" value={c.introduction || ""} onChange={(e) => setC({ introduction: e.target.value })} rows={4} />
         {(c.sections || []).map((s: { heading: string; body: string }, i: number) => (
-          <div key={i} className="space-y-2 rounded-lg border border-cream-300 p-3">
+          <div key={i} className="space-y-2 rounded-lg border border-gray-200 p-3">
             <Input label={`Section ${i + 1} heading`} value={s.heading} onChange={(e) => setC({ sections: c.sections.map((x: object, j: number) => (j === i ? { ...x, heading: e.target.value } : x)) })} />
             <Textarea aria-label={`Section ${i + 1} body`} value={s.body} onChange={(e) => setC({ sections: c.sections.map((x: object, j: number) => (j === i ? { ...x, body: e.target.value } : x)) })} rows={5} />
           </div>
@@ -587,24 +587,24 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
 
 function HistoryPanel({ versions, revisions, current }: { versions: AssetVersion[]; revisions: Revision[]; current: number }) {
   return (
-    <Card className="divide-y divide-cream-200">
-      {versions.length === 0 && <p className="p-5 text-sm text-charcoal-500">No history yet.</p>}
+    <Card className="divide-y divide-gray-200">
+      {versions.length === 0 && <p className="p-5 text-sm text-fg-muted">No history yet.</p>}
       {versions.map((v) => {
         const rev = revisions.find((r) => r.newVersion === v.version);
         return (
           <div key={v.id} className="px-5 py-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <History className="h-4 w-4 text-sage-500" />
-                <span className="text-sm font-semibold text-forest">Version {v.version}</span>
-                {v.version === current && <span className="rounded bg-sage-100 px-1.5 text-[11px] font-medium text-forest">Current</span>}
-                {v.approvedByName && <span className="rounded bg-sage-200 px-1.5 text-[11px] font-medium text-forest">Approved by {v.approvedByName}</span>}
+                <History className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-semibold text-fg">Version {v.version}</span>
+                {v.version === current && <span className="rounded bg-gray-100 px-1.5 text-[11px] font-medium text-fg">Current</span>}
+                {v.approvedByName && <span className="rounded bg-brand-100 px-1.5 text-[11px] font-medium text-fg">Approved by {v.approvedByName}</span>}
               </div>
-              <time className="text-xs text-charcoal-400">{fmtRelative(v.createdAt)}</time>
+              <time className="text-xs text-gray-500">{fmtRelative(v.createdAt)}</time>
             </div>
-            <p className="mt-1 text-sm text-charcoal-500">{v.reason}{v.createdByName ? ` · ${v.createdByName}` : ""}</p>
+            <p className="mt-1 text-sm text-fg-muted">{v.reason}{v.createdByName ? ` · ${v.createdByName}` : ""}</p>
             {rev && (
-              <p className="mt-1 text-xs text-charcoal-400">
+              <p className="mt-1 text-xs text-gray-500">
                 Requested: {rev.reasons.map((r) => r.replace(/_/g, " ")).join(", ")}{rev.instructions ? ` — “${rev.instructions}”` : ""}
               </p>
             )}
@@ -613,7 +613,7 @@ function HistoryPanel({ versions, revisions, current }: { versions: AssetVersion
         );
       })}
       {revisions.filter((r) => r.status === "failed" || r.status === "pending").map((r) => (
-        <div key={r.id} className="px-5 py-3 text-xs text-charcoal-500">
+        <div key={r.id} className="px-5 py-3 text-xs text-fg-muted">
           Revision from v{r.fromVersion}: {r.status === "pending" ? "in progress…" : `failed — ${r.error}`}
         </div>
       ))}
@@ -624,5 +624,5 @@ function HistoryPanel({ versions, revisions, current }: { versions: AssetVersion
 function VersionMedia({ path }: { path: string }) {
   const { url } = useStorageUrl(path);
   if (!url) return null;
-  return <a href={url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-medium text-forest underline underline-offset-2">Open this version's file</a>;
+  return <a href={url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-medium text-fg underline underline-offset-2">Open this version's file</a>;
 }

@@ -8,27 +8,31 @@ import { Logo } from "../../components/bits";
 
 function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: ReactNode; footer: ReactNode }) {
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-forest p-12 text-cream lg:flex">
-        <Logo light />
-        <div className="max-w-md">
-          <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-gold">Sermon-to-media for churches</p>
-          <h1 className="font-serif text-5xl leading-[1.08] text-cream">One sermon.<br />A week of ministry content.</h1>
-          <p className="mt-6 text-[15px] leading-relaxed text-sage-200">
+    <div className="grid min-h-screen bg-canvas lg:grid-cols-[1.1fr_1fr]">
+      <div className="hidden flex-col justify-between border-r border-gray-200 p-12 lg:flex">
+        <Logo />
+        <div className="max-w-xl">
+          <div className="mb-6 inline-flex items-center rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm text-gray-800">Sermon-to-media for churches</div>
+          <h1 className="text-[3.5rem] font-bold leading-[1.02] tracking-tightest text-fg xl:text-[4rem]">
+            One sermon.
+            <br />
+            <span className="highlight mt-2 inline-block">A week of content</span>
+          </h1>
+          <p className="mt-8 max-w-md text-lg leading-relaxed text-fg-muted">
             Your Sunday message deserves to reach beyond Sunday. Upload a recording, review what Selah Studio prepares, and share what you approve throughout the week.
           </p>
         </div>
-        <p className="text-xs text-sage-300">Upload a sermon · Review the content · Approve what matters · Share it throughout the week</p>
-        <div className="pointer-events-none absolute -bottom-24 -right-24 h-80 w-80 rounded-full border border-gold/20" aria-hidden />
-        <div className="pointer-events-none absolute -bottom-10 -right-10 h-52 w-52 rounded-full border border-gold/20" aria-hidden />
+        <p className="text-sm text-fg-muted">© {new Date().getFullYear()} Dove · Upload · Review · Approve · Share</p>
       </div>
       <div className="flex items-center justify-center px-5 py-12">
         <div className="w-full max-w-[400px]">
           <Logo className="mb-10 lg:hidden" />
-          <h2 className="font-serif text-3xl text-forest">{title}</h2>
-          <p className="mt-2 text-sm text-charcoal-500">{subtitle}</p>
-          <div className="mt-8">{children}</div>
-          <div className="mt-8 text-center text-sm text-charcoal-500">{footer}</div>
+          <div className="card p-7 sm:p-8">
+            <h2 className="text-2xl font-semibold tracking-tight text-fg">{title}</h2>
+            <p className="mt-1.5 text-[15px] text-fg-muted">{subtitle}</p>
+            <div className="mt-7">{children}</div>
+          </div>
+          <div className="mt-6 text-center text-sm text-fg-muted">{footer}</div>
         </div>
       </div>
     </div>
@@ -90,10 +94,10 @@ export function SignIn() {
         <Input label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         <Input label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         <div className="flex justify-end">
-          <Link to="/reset-password" className="text-sm text-forest underline-offset-4 hover:underline">Forgot password?</Link>
+          <Link to="/reset-password" className="text-sm text-fg underline-offset-4 hover:underline">Forgot password?</Link>
         </div>
         <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!email || !password}>Sign in</Button>
-        <div className="flex items-center gap-3 py-1 text-xs text-charcoal-400"><span className="h-px flex-1 bg-cream-300" />or<span className="h-px flex-1 bg-cream-300" /></div>
+        <div className="flex items-center gap-3 py-1 text-sm text-gray-400"><span className="h-px flex-1 bg-gray-200" />or<span className="h-px flex-1 bg-gray-200" /></div>
         <GoogleButton onError={setError} />
       </form>
     </AuthShell>
@@ -134,7 +138,7 @@ export function SignUp() {
         <Input label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} hint="If you were invited, use the email address the invitation was sent to." />
         <Input label="Password" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} hint="At least 8 characters." />
         <Button type="submit" size="lg" className="w-full" loading={busy}>Create account</Button>
-        <div className="flex items-center gap-3 py-1 text-xs text-charcoal-400"><span className="h-px flex-1 bg-cream-300" />or<span className="h-px flex-1 bg-cream-300" /></div>
+        <div className="flex items-center gap-3 py-1 text-sm text-gray-400"><span className="h-px flex-1 bg-gray-200" />or<span className="h-px flex-1 bg-gray-200" /></div>
         <GoogleButton onError={setError} />
       </form>
     </AuthShell>

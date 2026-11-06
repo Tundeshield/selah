@@ -12,13 +12,14 @@ import { fmtDuration } from "../lib/format";
 
 export function Logo({ className, light }: { className?: string; light?: boolean }) {
   return (
-    <div className={clsx("flex items-center gap-2.5", className)}>
-      <svg viewBox="0 0 64 64" className="h-8 w-8" aria-hidden>
-        <rect width="64" height="64" rx="14" fill={light ? "#F7F4ED" : "#20342C"} />
-        <path d="M20 40c6-1 10-4 13-9 2 5 6 8 11 9-5 2-9 5-11 10-3-6-7-9-13-10z" fill="#C5A56A" />
-        <circle cx="32" cy="22" r="5" fill={light ? "#20342C" : "#F7F4ED"} />
+    <div className={clsx("flex items-center gap-2", className)}>
+      <svg viewBox="0 0 64 64" className="h-7 w-7" aria-hidden>
+        <rect width="64" height="64" rx="12" fill="rgb(var(--brand-500))" />
+        <path d="M19 39c6.5-1 10.5-4.2 13-9.5 2.5 5.3 6.5 8.5 13 9.5-5.5 2-9.5 5.3-13 11-3.5-5.7-7.5-9-13-11z" fill="#fff" />
+        <circle cx="32" cy="20" r="5" fill="#fff" />
       </svg>
-      <span className={clsx("font-serif text-xl leading-none", light ? "text-cream" : "text-forest")}>Selah Studio</span>
+      <span className={clsx("text-[22px] font-semibold leading-none tracking-tight", light ? "text-white" : "text-fg")}>selah</span>
+      <span className={clsx("rounded border px-1 py-px text-[10px] font-semibold uppercase leading-tight tracking-wide", light ? "border-white/60 text-white" : "border-brand-500 text-brand-600")}>Studio</span>
     </div>
   );
 }
@@ -42,7 +43,7 @@ export function TypeIcon({ type, className }: { type: Asset["type"]; className?:
 
 export function StorageImage({ path, alt, className, fallback }: { path?: string | null; alt: string; className?: string; fallback?: ReactNode }) {
   const { url } = useStorageUrl(path);
-  if (!path || !url) return <>{fallback ?? <div className={clsx("bg-sage-100", className)} />}</>;
+  if (!path || !url) return <>{fallback ?? <div className={clsx("bg-gray-100", className)} />}</>;
   return <img src={url} alt={alt} className={className} loading="lazy" />;
 }
 
@@ -66,35 +67,35 @@ export function AssetThumb({ asset, className }: { asset: Asset; className?: str
   const cat = asset.category;
   if (cat === "video") {
     return (
-      <div className={clsx("relative overflow-hidden bg-forest", className)}>
+      <div className={clsx("relative overflow-hidden bg-gray-900", className)}>
         {asset.media?.thumbnailPath ? (
           <StorageImage path={asset.media.thumbnailPath} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-cream/80">
-            {asset.render?.status === "failed" ? <AlertTriangle className="h-5 w-5 text-gold" /> : <Loader2 className="h-5 w-5 animate-spin text-gold" />}
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-white/80">
+            {asset.render?.status === "failed" ? <AlertTriangle className="h-5 w-5 text-brand-500" /> : <Loader2 className="h-5 w-5 animate-spin text-brand-500" />}
             <span className="line-clamp-3 text-xs">{asset.render?.status === "failed" ? "Rendering failed" : "Rendering clip…"}</span>
           </div>
         )}
-        {asset.durationSec ? <span className="absolute bottom-2 right-2 rounded bg-forest-900/80 px-1.5 py-0.5 text-[11px] font-medium text-cream">{fmtDuration(asset.durationSec)}</span> : null}
+        {asset.durationSec ? <span className="absolute bottom-2 right-2 rounded bg-gray-950/80 px-1.5 py-0.5 text-[11px] font-medium text-white">{fmtDuration(asset.durationSec)}</span> : null}
       </div>
     );
   }
   if (cat === "graphic") {
     return (
-      <div className={clsx("overflow-hidden bg-cream-200", className)}>
+      <div className={clsx("overflow-hidden bg-gray-100", className)}>
         <GraphicCanvas settings={{ ...asset.content, size: "square" }} className="h-full w-full object-cover" />
       </div>
     );
   }
   if (cat === "audio") {
     return (
-      <div className={clsx("flex flex-col items-center justify-center gap-3 bg-sage-100 p-4", className)}>
+      <div className={clsx("flex flex-col items-center justify-center gap-3 bg-gray-100 p-4", className)}>
         <div className="flex h-10 items-end gap-[3px]" aria-hidden>
           {[14, 26, 18, 34, 22, 40, 28, 16, 30, 20, 36, 18, 24, 12].map((h, i) => (
-            <span key={i} className="w-1.5 rounded-full bg-forest/70" style={{ height: h }} />
+            <span key={i} className="w-1.5 rounded-full bg-brand-500/70" style={{ height: h }} />
           ))}
         </div>
-        <span className="text-xs font-medium text-forest">{asset.media?.path ? `Podcast MP3 · ${fmtDuration(asset.durationSec)}` : "Preparing audio…"}</span>
+        <span className="text-xs font-medium text-fg">{asset.media?.path ? `Podcast MP3 · ${fmtDuration(asset.durationSec)}` : "Preparing audio…"}</span>
       </div>
     );
   }
@@ -105,11 +106,11 @@ export function AssetThumb({ asset, className }: { asset: Asset; className?: str
       ? Object.values(c.platforms || {})[0]
       : c.body || c.reflection || c.introduction || "";
   return (
-    <div className={clsx("relative overflow-hidden bg-cream-50 p-4", className)}>
-      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-gold-700">{ASSET_TYPE[asset.type].label}</div>
-      <div className="font-serif text-[17px] leading-snug text-forest line-clamp-2">{c.title || asset.title}</div>
-      <p className="mt-2 text-[13px] leading-relaxed text-charcoal-500 line-clamp-4">{String(text || "")}</p>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-cream-50" />
+    <div className={clsx("relative overflow-hidden bg-gray-50 p-4", className)}>
+      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-brand-700">{ASSET_TYPE[asset.type].label}</div>
+      <div className="font-semibold tracking-tight text-[17px] leading-snug text-fg line-clamp-2">{c.title || asset.title}</div>
+      <p className="mt-2 text-[13px] leading-relaxed text-fg-muted line-clamp-4">{String(text || "")}</p>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-gray-50" />
     </div>
   );
 }
@@ -118,14 +119,14 @@ export function Stat({ label, value, tone, href, icon }: { label: string; value:
   const inner = (
     <div className="flex items-center justify-between gap-3">
       <div>
-        <div className={clsx("text-2xl font-semibold tabular-nums", tone === "bad" && Number(value) > 0 ? "text-[#8E3B2F]" : "text-forest")}>{value}</div>
-        <div className="mt-0.5 text-[13px] text-charcoal-500">{label}</div>
+        <div className={clsx("text-2xl font-semibold tabular-nums", tone === "bad" && Number(value) > 0 ? "text-red-700" : "text-fg")}>{value}</div>
+        <div className="mt-0.5 text-[13px] text-fg-muted">{label}</div>
       </div>
-      {icon && <div className="text-sage-500">{icon}</div>}
+      {icon && <div className="text-gray-500">{icon}</div>}
     </div>
   );
   return href ? (
-    <Link to={href} className="card block p-4 transition-colors hover:border-sage-300">{inner}</Link>
+    <Link to={href} className="card block p-4 transition-colors hover:border-gray-300">{inner}</Link>
   ) : (
     <div className="card p-4">{inner}</div>
   );

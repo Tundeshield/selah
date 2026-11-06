@@ -59,7 +59,7 @@ function useForm<T>(initial: T) {
 function SaveBar({ dirty, busy, onSave, onReset, disabled }: { dirty: boolean; busy: boolean; onSave: () => void; onReset: () => void; disabled: boolean }) {
   if (disabled) return null;
   return (
-    <div className="flex items-center justify-end gap-2 border-t border-cream-200 pt-4">
+    <div className="flex items-center justify-end gap-2 border-t border-gray-200 pt-4">
       {dirty && <Button variant="ghost" onClick={onReset}>Discard</Button>}
       <Button onClick={onSave} disabled={!dirty} loading={busy}>Save changes</Button>
     </div>
@@ -100,11 +100,11 @@ function ProfileTab({ church, disabled }: { church: Church; disabled: boolean })
   return (
     <Card className="space-y-5 p-6">
       <div className="flex items-center gap-5">
-        <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-cream-300 bg-cream-50">
-          {church.logoPath ? <StorageImage path={church.logoPath} alt="Church logo" className="h-full w-full object-contain p-2" /> : <ImagePlus className="h-6 w-6 text-sage-500" />}
+        <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+          {church.logoPath ? <StorageImage path={church.logoPath} alt="Church logo" className="h-full w-full object-contain p-2" /> : <ImagePlus className="h-6 w-6 text-gray-500" />}
         </div>
         {!disabled && (
-          <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-cream-300 bg-white px-4 text-sm font-medium text-forest hover:bg-sage-50">
+          <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-fg hover:bg-gray-50">
             {logoBusy ? "Uploading…" : church.logoPath ? "Replace logo" : "Upload logo"}
             <input
               type="file"
@@ -127,7 +127,7 @@ function ProfileTab({ church, disabled }: { church: Church; disabled: boolean })
           </label>
         )}
       </div>
-      <p className="-mt-2 text-xs text-charcoal-400">PNG with a transparent background works best. SVG logos appear on graphics but not on rendered videos.</p>
+      <p className="-mt-2 text-xs text-gray-500">PNG with a transparent background works best. SVG logos appear on graphics but not on rendered videos.</p>
       {err && <Notice tone="error">{err}</Notice>}
       <fieldset disabled={disabled} className="space-y-4">
         <Input label="Church name" value={f.v.name} onChange={(e) => f.setV({ ...f.v, name: e.target.value })} />
@@ -152,7 +152,7 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
     <div>
       <label className="label">{label}</label>
       <div className="flex items-center gap-2">
-        <input type="color" value={HEX.test(value) ? value : "#20342C"} onChange={(e) => onChange(e.target.value)} className="h-10 w-12 cursor-pointer rounded-lg border border-cream-300 bg-white p-1" aria-label={`${label} picker`} />
+        <input type="color" value={HEX.test(value) ? value : "#18181B"} onChange={(e) => onChange(e.target.value)} className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 bg-white p-1" aria-label={`${label} picker`} />
         <input className="field font-mono" value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} />
       </div>
     </div>
@@ -163,10 +163,10 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
   const { churchId } = useChurch();
   const b = church.brand || {};
   const f = useForm({
-    primary: b.primary || "#20342C",
-    secondary: b.secondary || "#DCE5D9",
-    accent: b.accent || "#C5A56A",
-    font: b.font || "DM Serif Display",
+    primary: b.primary || "#18181B",
+    secondary: b.secondary || "#F4F4F5",
+    accent: b.accent || "#418FAE",
+    font: b.font || "Outfit",
     logoPlacement: b.logoPlacement || "top-right",
     captionStyle: b.captionStyle || "clean",
     graphicTemplate: b.graphicTemplate || "cream",
@@ -181,11 +181,11 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
           <ColorField label="Secondary colour" value={f.v.secondary} onChange={(v) => f.setV({ ...f.v, secondary: v })} />
           <ColorField label="Accent colour" value={f.v.accent} onChange={(v) => f.setV({ ...f.v, accent: v })} />
         </div>
-        <p className="-mt-2 text-xs text-charcoal-400">The primary colour is the background for audio-only video clips; the accent highlights graphics and waveforms.</p>
+        <p className="-mt-2 text-xs text-gray-500">The primary colour is the background for audio-only video clips; the accent highlights graphics and waveforms.</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Select label="Heading font" value={f.v.font} onChange={(e) => f.setV({ ...f.v, font: e.target.value })} hint="Used on quote graphics.">
-            <option>DM Serif Display</option>
-            <option>Georgia</option>
+            <option>Outfit</option>
+            <option>Inter</option>
           </Select>
           <Select label="Default caption style" value={f.v.captionStyle} onChange={(e) => f.setV({ ...f.v, captionStyle: e.target.value })}>
             <option value="clean">Clean</option>
@@ -206,14 +206,14 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
         </div>
       </fieldset>
       {err && <Notice tone="error">{err}</Notice>}
-      <p className="text-xs text-charcoal-400">New defaults apply to content generated from now on.</p>
+      <p className="text-xs text-gray-500">New defaults apply to content generated from now on.</p>
       <SaveBar
         dirty={f.dirty}
         busy={busy}
         onReset={f.reset}
         disabled={disabled}
         onSave={() => {
-          if (![f.v.primary, f.v.secondary, f.v.accent].every((c) => HEX.test(c))) return setErr("Colours must be hex values like #20342C.");
+          if (![f.v.primary, f.v.secondary, f.v.accent].every((c) => HEX.test(c))) return setErr("Colours must be hex values like #418FAE.");
           setErr(null);
           save(() => updateChurch(churchId, { brand: f.v }), f.markSaved);
         }}
@@ -257,9 +257,9 @@ function ContentTab({ church, disabled }: { church: Church; disabled: boolean })
           <span className="label">Preferred clip duration</span>
           <div className="flex items-center gap-3">
             <Input aria-label="Minimum seconds" type="number" min={10} max={170} value={f.v.clipMin} onChange={(e) => f.setV({ ...f.v, clipMin: Number(e.target.value) })} className="w-28" />
-            <span className="text-sm text-charcoal-500">to</span>
+            <span className="text-sm text-fg-muted">to</span>
             <Input aria-label="Maximum seconds" type="number" min={20} max={180} value={f.v.clipMax} onChange={(e) => f.setV({ ...f.v, clipMax: Number(e.target.value) })} className="w-28" />
-            <span className="text-sm text-charcoal-500">seconds</span>
+            <span className="text-sm text-fg-muted">seconds</span>
           </div>
         </div>
         <fieldset>
@@ -302,7 +302,7 @@ function ApprovalTab({ church, disabled }: { church: Church; disabled: boolean }
         <Checkbox
           checked={f.v.requireReapproval}
           onChange={(v) => f.setV({ ...f.v, requireReapproval: v })}
-          label={<><span className="font-medium text-forest">Require approval again after any edit</span><span className="block text-xs text-charcoal-500">When off, small edits to titles and social captions keep their approval. Changes to quotes, clip timing, captions or written content always need approval again.</span></>}
+          label={<><span className="font-medium text-fg">Require approval again after any edit</span><span className="block text-xs text-fg-muted">When off, small edits to titles and social captions keep their approval. Changes to quotes, clip timing, captions or written content always need approval again.</span></>}
         />
         <Select label="Default reviewer" value={f.v.defaultReviewerId} onChange={(e) => f.setV({ ...f.v, defaultReviewerId: e.target.value })} hint="Shown as the person responsible for reviewing new content.">
           <option value="">No default reviewer</option>
@@ -370,7 +370,7 @@ function TeamTab({ disabled }: { disabled: boolean }) {
       {!disabled && (
         <Card className="p-6">
           <h2 className="h-section mb-1">Invite a team member</h2>
-          <p className="mb-4 text-sm text-charcoal-500">They'll join this workspace when they sign up or sign in with this email. Share the app link with them.</p>
+          <p className="mb-4 text-sm text-fg-muted">They'll join this workspace when they sign up or sign in with this email. Share the app link with them.</p>
           <form onSubmit={invite} className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <Input className="flex-1" label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={err} />
             <Select label="Role" value={role} onChange={(e) => setRole(e.target.value)}>
@@ -378,16 +378,16 @@ function TeamTab({ disabled }: { disabled: boolean }) {
             </Select>
             <Button type="submit" icon={<UserPlus className="h-4 w-4" />} loading={busy === "invite"} disabled={!email}>Invite</Button>
           </form>
-          <button type="button" className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-forest hover:underline" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/signup`).then(() => toast("Sign-up link copied"))}>
+          <button type="button" className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-fg hover:underline" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/signup`).then(() => toast("Sign-up link copied"))}>
             <Copy className="h-3.5 w-3.5" /> Copy sign-up link
           </button>
           {invites.data.length > 0 && (
-            <div className="mt-5 border-t border-cream-200 pt-4">
-              <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Pending invitations</h3>
+            <div className="mt-5 border-t border-gray-200 pt-4">
+              <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Pending invitations</h3>
               <ul className="space-y-2">
                 {invites.data.map((i) => (
                   <li key={i.id} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="truncate text-forest">{i.email} <span className="text-charcoal-400">· {ROLE_LABEL[i.role]}</span></span>
+                    <span className="truncate text-fg">{i.email} <span className="text-gray-500">· {ROLE_LABEL[i.role]}</span></span>
                     <Button size="sm" variant="ghost" loading={busy === i.id} onClick={() => act(i.id, () => api.revokeInvite({ churchId, inviteId: i.id }), "Invitation revoked")}>Revoke</Button>
                   </li>
                 ))}
@@ -397,18 +397,18 @@ function TeamTab({ disabled }: { disabled: boolean }) {
         </Card>
       )}
 
-      <Card className="divide-y divide-cream-200">
+      <Card className="divide-y divide-gray-200">
         {members.data.map((m) => (
           <div key={m.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage-200 text-xs font-semibold text-forest">{(m.name || m.email || "?").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()}</div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-fg">{(m.name || m.email || "?").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()}</div>
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-forest">{m.name}{m.id === user?.uid && <span className="text-charcoal-400"> (you)</span>}</div>
-                <div className="truncate text-xs text-charcoal-500">{m.email}</div>
+                <div className="truncate text-sm font-medium text-fg">{m.name}{m.id === user?.uid && <span className="text-gray-500"> (you)</span>}</div>
+                <div className="truncate text-xs text-fg-muted">{m.email}</div>
               </div>
             </div>
             {disabled ? (
-              <span className="text-sm text-charcoal-500">{ROLE_LABEL[m.role]}</span>
+              <span className="text-sm text-fg-muted">{ROLE_LABEL[m.role]}</span>
             ) : (
               <div className="flex items-center gap-2">
                 <select
@@ -421,15 +421,15 @@ function TeamTab({ disabled }: { disabled: boolean }) {
                   {Object.entries(ROLE_LABEL).map(([id, l]) => <option key={id} value={id}>{l}</option>)}
                 </select>
                 {m.id !== user?.uid && (
-                  <button className="rounded-lg p-2 text-charcoal-400 hover:bg-[#FBEFEC] hover:text-[#8E3B2F]" onClick={() => setRemoving(m)} aria-label={`Remove ${m.name}`}><Trash2 className="h-4 w-4" /></button>
+                  <button className="rounded-lg p-2 text-gray-500 hover:bg-red-50 hover:text-red-700" onClick={() => setRemoving(m)} aria-label={`Remove ${m.name}`}><Trash2 className="h-4 w-4" /></button>
                 )}
               </div>
             )}
           </div>
         ))}
       </Card>
-      <div className="grid gap-3 text-xs text-charcoal-500 sm:grid-cols-3">
-        {Object.entries(ROLE_DESC).map(([r, d]) => <div key={r}><span className="font-semibold text-forest">{ROLE_LABEL[r]}</span> — {d}</div>)}
+      <div className="grid gap-3 text-xs text-fg-muted sm:grid-cols-3">
+        {Object.entries(ROLE_DESC).map(([r, d]) => <div key={r}><span className="font-semibold text-fg">{ROLE_LABEL[r]}</span> — {d}</div>)}
       </div>
 
       <Modal
@@ -438,7 +438,7 @@ function TeamTab({ disabled }: { disabled: boolean }) {
         title="Remove team member?"
         footer={<><Button variant="ghost" onClick={() => setRemoving(null)}>Cancel</Button><Button variant="danger" loading={busy === "remove"} onClick={() => removing && act("remove", () => api.removeMember({ churchId, uid: removing.id }).then(() => setRemoving(null)), "Member removed")}>Remove</Button></>}
       >
-        <p className="text-sm text-charcoal">{removing?.name} will lose access to this church workspace. Content they created stays.</p>
+        <p className="text-sm text-gray-800">{removing?.name} will lose access to this church workspace. Content they created stays.</p>
       </Modal>
     </div>
   );

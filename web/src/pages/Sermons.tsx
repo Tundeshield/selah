@@ -88,7 +88,7 @@ export default function Sermons() {
             />
             <div className="flex gap-2">
               <div className="relative flex-1 lg:w-72">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal-400" aria-hidden />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" aria-hidden />
                 <input
                   className="field pl-9"
                   placeholder="Search title, preacher, scripture, transcript"
@@ -106,32 +106,32 @@ export default function Sermons() {
           </div>
 
           {list.length === 0 ? (
-            <p className="rounded-xl bg-cream-50 px-5 py-10 text-center text-sm text-charcoal-500">No sermons match{q ? ` “${q}”` : " this filter"}.</p>
+            <p className="rounded-xl bg-gray-50 px-5 py-10 text-center text-sm text-fg-muted">No sermons match{q ? ` “${q}”` : " this filter"}.</p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {list.map((s) => {
                 const n = assets.filter((a) => a.sermonId === s.id).length;
                 return (
-                  <Link key={s.id} to={`/sermons/${s.id}`} className="card group overflow-hidden transition-colors hover:border-sage-300">
-                    <div className="relative aspect-video bg-forest">
+                  <Link key={s.id} to={`/sermons/${s.id}`} className="card group overflow-hidden transition-colors hover:border-gray-300">
+                    <div className="relative aspect-video bg-brand-50">
                       <StorageImage
                         path={s.thumbnailPath}
                         alt=""
                         className="h-full w-full object-cover opacity-95 transition-opacity group-hover:opacity-100"
                         fallback={
-                          <div className="flex h-full w-full items-center justify-center bg-forest">
-                            {s.media?.kind === "video" ? <Film className="h-8 w-8 text-gold/80" /> : <Mic2 className="h-8 w-8 text-gold/80" />}
+                          <div className="flex h-full w-full items-center justify-center bg-brand-50">
+                            {s.media?.kind === "video" ? <Film className="h-8 w-8 text-brand-500/80" /> : <Mic2 className="h-8 w-8 text-brand-500/80" />}
                           </div>
                         }
                       />
-                      <div className="absolute left-3 top-3"><SermonStatusBadge status={s.status} className="ring-1 ring-cream/60" /></div>
-                      {s.durationSec ? <span className="absolute bottom-2 right-2 rounded bg-forest-900/80 px-1.5 py-0.5 text-[11px] font-medium text-cream">{fmtDuration(s.durationSec)}</span> : null}
+                      <div className="absolute left-3 top-3"><SermonStatusBadge status={s.status} className="shadow-card" /></div>
+                      {s.durationSec ? <span className="absolute bottom-2 right-2 rounded bg-gray-950/80 px-1.5 py-0.5 text-[11px] font-medium text-white">{fmtDuration(s.durationSec)}</span> : null}
                     </div>
                     <div className="p-4">
-                      <h3 className="line-clamp-2 font-serif text-lg leading-snug text-forest">{s.title}</h3>
-                      <p className="mt-1 text-[13px] text-charcoal-500">{s.preacher || "—"} · {fmtServiceDate(s.serviceDate)}</p>
-                      {s._snippet && <p className="mt-2 line-clamp-2 rounded bg-gold-50 px-2 py-1 text-xs italic text-charcoal-500">{s._snippet}</p>}
-                      <p className="mt-3 text-xs text-charcoal-400">{n ? `${n} generated asset${n === 1 ? "" : "s"}` : s.scripture || "No content yet"}</p>
+                      <h3 className="line-clamp-2 font-semibold tracking-tight text-lg leading-snug text-fg">{s.title}</h3>
+                      <p className="mt-1 text-[13px] text-fg-muted">{s.preacher || "—"} · {fmtServiceDate(s.serviceDate)}</p>
+                      {s._snippet && <p className="mt-2 line-clamp-2 rounded bg-brand-50 px-2 py-1 text-xs italic text-fg-muted">{s._snippet}</p>}
+                      <p className="mt-3 text-xs text-gray-500">{n ? `${n} generated asset${n === 1 ? "" : "s"}` : s.scripture || "No content yet"}</p>
                     </div>
                   </Link>
                 );

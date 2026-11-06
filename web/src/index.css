@@ -2,29 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Accent colour. Cyan is the default; set data-accent="teal" or "blue" on
+ * <html> (or edit these values) to switch. Values are "R G B".
+ */
+:root,
+[data-accent="cyan"] {
+  --brand-50: 239 252 254;
+  --brand-100: 223 249 253; /* #dff9fd tint */
+  --brand-200: 189 236 245;
+  --brand-300: 141 212 230;
+  --brand-400: 96 174 202;
+  --brand-500: 65 143 174; /* #418fae solid */
+  --brand-600: 54 123 151;
+  --brand-700: 46 104 128;
+  --brand-800: 41 91 112; /* #295b70 */
+  --brand-900: 33 72 89;
+  --brand-950: 21 49 61;
+}
+[data-accent="teal"] {
+  --brand-50: 240 253 249;
+  --brand-100: 221 250 243;
+  --brand-200: 186 238 226;
+  --brand-300: 137 212 196;
+  --brand-400: 96 177 165;
+  --brand-500: 67 146 136;
+  --brand-600: 56 125 117;
+  --brand-700: 48 106 99;
+  --brand-800: 41 92 86;
+  --brand-900: 33 74 69;
+  --brand-950: 20 50 47;
+}
+[data-accent="blue"] {
+  --brand-50: 241 246 254;
+  --brand-100: 228 237 252;
+  --brand-200: 201 218 250;
+  --brand-300: 156 185 244;
+  --brand-400: 97 136 236;
+  --brand-500: 54 98 227;
+  --brand-600: 44 80 200;
+  --brand-700: 37 67 172;
+  --brand-800: 33 60 160;
+  --brand-900: 30 52 130;
+  --brand-950: 20 34 84;
+}
+
 @layer base {
-  html { -webkit-font-smoothing: antialiased; }
-  body { @apply bg-cream text-charcoal font-sans; }
-  h1, h2, h3 { @apply text-forest; }
-  :focus-visible { @apply outline-none ring-2 ring-gold ring-offset-2 ring-offset-cream; }
-  ::selection { background: #DCE5D9; }
+  html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body { @apply bg-canvas font-sans text-[15px] text-fg; }
+  h1, h2, h3 { @apply text-fg; }
+  :focus-visible { @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white; }
+  ::selection { background: rgb(var(--brand-100)); }
 }
 
 @layer components {
-  .h-page { @apply font-serif text-[1.9rem] leading-tight text-forest md:text-[2.25rem]; }
-  .h-section { @apply font-serif text-xl text-forest; }
-  .label { @apply mb-1.5 block text-sm font-medium text-forest; }
-  .hint { @apply mt-1 text-xs text-charcoal-400; }
+  .h-page { @apply text-[1.75rem] font-semibold leading-tight tracking-tight text-fg md:text-[2rem]; }
+  .h-section { @apply text-lg font-semibold tracking-tight text-fg; }
+  .label { @apply mb-1.5 block text-sm font-medium text-fg; }
+  .hint { @apply mt-1.5 text-xs text-fg-muted; }
   .field {
-    @apply block w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-charcoal
-      placeholder:text-charcoal-400/70 focus:border-forest/40 focus:outline-none focus:ring-2 focus:ring-sage-300;
+    @apply block h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-fg shadow-[0_1px_1px_rgba(24,24,27,0.03)]
+      placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500
+      disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500;
   }
-  .card { @apply rounded-xl border border-cream-300/80 bg-white shadow-card; }
-  .link { @apply font-medium text-forest underline decoration-gold/60 underline-offset-4 hover:decoration-gold; }
+  textarea.field { @apply h-auto py-2.5; }
+  .card { @apply rounded-xl border border-gray-200 bg-white shadow-card; }
+  .link { @apply font-medium text-fg underline decoration-gray-300 underline-offset-4 hover:decoration-fg; }
+  .eyebrow { @apply text-xs font-medium uppercase tracking-[0.08em] text-fg-muted; }
+  /* Chakra Pro's hero highlight: tinted box with a caret bar on the right */
+  .highlight { @apply rounded-sm border-r-2 border-brand-800 bg-brand-100 px-2 text-brand-800; }
 }
 
 .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: #E4DDCD; border-radius: 99px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 99px; }
 
-input[type="range"] { accent-color: #20342C; }
-input[type="checkbox"], input[type="radio"] { accent-color: #20342C; }
+input[type="range"], input[type="checkbox"], input[type="radio"] { accent-color: rgb(var(--brand-500)); }

@@ -185,14 +185,14 @@ export default function UploadSermon() {
               onDrop={onDrop}
               className={clsx(
                 "flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-14 text-center transition-colors",
-                drag ? "border-forest bg-sage-50" : "border-cream-300 bg-cream-50",
+                drag ? "border-brand-500 bg-gray-50" : "border-gray-200 bg-gray-50",
               )}
             >
-              <UploadCloud className="mb-3 h-10 w-10 text-sage-500" aria-hidden />
-              <p className="font-serif text-xl text-forest">Drag your recording here</p>
-              <p className="mt-1 text-sm text-charcoal-500">or</p>
+              <UploadCloud className="mb-3 h-10 w-10 text-gray-500" aria-hidden />
+              <p className="font-semibold tracking-tight text-xl text-fg">Drag your recording here</p>
+              <p className="mt-1 text-sm text-fg-muted">or</p>
               <Button type="button" variant="secondary" className="mt-3" onClick={() => inputRef.current?.click()}>Choose audio or video file</Button>
-              <p className="mt-4 text-xs text-charcoal-400">{SUPPORTED_UPLOAD.label}</p>
+              <p className="mt-4 text-xs text-gray-500">{SUPPORTED_UPLOAD.label}</p>
               <input
                 ref={inputRef}
                 type="file"
@@ -205,20 +205,20 @@ export default function UploadSermon() {
           ) : (
             <div>
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sage-100 text-forest"><Icon className="h-6 w-6" /></div>
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-fg"><Icon className="h-6 w-6" /></div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium text-forest">{file.name}</div>
-                  <div className="text-xs text-charcoal-500">{fmtBytes(file.size)}{duration ? ` · ${fmtDuration(duration)}` : ""}</div>
+                  <div className="truncate font-medium text-fg">{file.name}</div>
+                  <div className="text-xs text-fg-muted">{fmtBytes(file.size)}{duration ? ` · ${fmtDuration(duration)}` : ""}</div>
                 </div>
                 {!busy && (
-                  <button type="button" className="rounded-lg p-2 text-charcoal-400 hover:bg-cream-200 hover:text-forest" onClick={() => { setFile(null); setPhase("select"); sermonIdRef.current = null; }} aria-label="Remove file">
+                  <button type="button" className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-fg" onClick={() => { setFile(null); setPhase("select"); sermonIdRef.current = null; }} aria-label="Remove file">
                     <X className="h-5 w-5" />
                   </button>
                 )}
               </div>
               {phase !== "select" && (
                 <div className="mt-5">
-                  <div className="mb-1.5 flex justify-between text-xs text-charcoal-500">
+                  <div className="mb-1.5 flex justify-between text-xs text-fg-muted">
                     <span>
                       {phase === "uploading" && "Uploading…"}
                       {phase === "starting" && "Upload complete. Starting processing…"}
@@ -227,8 +227,8 @@ export default function UploadSermon() {
                     </span>
                     <span className="tabular-nums">{Math.round(progress * 100)}%</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-cream-200" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Upload progress">
-                    <div className={clsx("h-full rounded-full transition-all", phase === "failed" ? "bg-[#B5544A]" : "bg-forest")} style={{ width: `${progress * 100}%` }} />
+                  <div className="h-2 overflow-hidden rounded-full bg-gray-100" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Upload progress">
+                    <div className={clsx("h-full rounded-full transition-all", phase === "failed" ? "bg-red-500" : "bg-brand-500")} style={{ width: `${progress * 100}%` }} />
                   </div>
                   <div className="mt-3 flex gap-2">
                     {phase === "uploading" && <Button type="button" variant="secondary" size="sm" onClick={() => taskRef.current?.cancel()}>Cancel upload</Button>}
@@ -251,17 +251,17 @@ export default function UploadSermon() {
           <Input label="Scripture reference" hint="Optional — e.g. Romans 8:28–39" value={meta.scripture} onChange={(e) => setMeta({ ...meta, scripture: e.target.value })} disabled={busy} />
           <Textarea label="Description" hint="Optional" rows={3} value={meta.description} onChange={(e) => setMeta({ ...meta, description: e.target.value })} disabled={busy} />
 
-          <div className="rounded-lg border border-cream-300 bg-cream-50 px-4 py-3">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm">
-                <FileText className="h-4 w-4 text-sage-500" aria-hidden />
+                <FileText className="h-4 w-4 text-gray-500" aria-hidden />
                 {transcript ? (
-                  <span className="text-forest">{transcript.name} · {transcript.segments.length} segments{transcript.hasTimestamps ? "" : " (no timestamps — video clips will be skipped)"}</span>
+                  <span className="text-fg">{transcript.name} · {transcript.segments.length} segments{transcript.hasTimestamps ? "" : " (no timestamps — video clips will be skipped)"}</span>
                 ) : (
-                  <span className="text-charcoal-500">Have a transcript already? <span className="text-charcoal-400">Optional (.txt, .srt, .vtt)</span></span>
+                  <span className="text-fg-muted">Have a transcript already? <span className="text-gray-500">Optional (.txt, .srt, .vtt)</span></span>
                 )}
               </div>
-              <label className="cursor-pointer text-sm font-medium text-forest hover:underline">
+              <label className="cursor-pointer text-sm font-medium text-fg hover:underline">
                 {transcript ? "Replace" : "Attach transcript"}
                 <input type="file" accept=".txt,.srt,.vtt,text/plain,text/vtt" className="sr-only" disabled={busy} onChange={(e) => pickTranscript(e.target.files?.[0])} />
               </label>

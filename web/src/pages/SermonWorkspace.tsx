@@ -73,12 +73,12 @@ export default function SermonWorkspace() {
 
   return (
     <>
-      <Link to="/sermons" className="mb-5 inline-flex items-center gap-1.5 text-sm text-charcoal-500 hover:text-forest"><ArrowLeft className="h-4 w-4" /> Sermons</Link>
+      <Link to="/sermons" className="mb-5 inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg"><ArrowLeft className="h-4 w-4" /> Sermons</Link>
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="mb-2"><SermonStatusBadge status={sermon.status} /></div>
           <h1 className="h-page">{sermon.title}</h1>
-          <p className="mt-2 text-sm text-charcoal-500">
+          <p className="mt-2 text-sm text-fg-muted">
             {sermon.preacher || "—"} · {fmtServiceDate(sermon.serviceDate)} · {fmtDuration(sermon.durationSec)}
             {sermon.scripture ? ` · ${sermon.scripture}` : ""}
           </p>
@@ -87,7 +87,7 @@ export default function SermonWorkspace() {
           {can("contributor") && <Button variant="secondary" size="sm" icon={<Pencil className="h-4 w-4" />} onClick={() => setEditOpen(true)}>Edit details</Button>}
           {sermonAssets.length > 0 && <Button variant="secondary" size="sm" icon={<LayoutGrid className="h-4 w-4" />} onClick={() => navigate(`/studio?sermon=${sermon.id}`)}>Open in Content Studio</Button>}
           {can("contributor") && ["ready", "published"].includes(sermon.status) && <Button variant="secondary" size="sm" icon={<Sparkles className="h-4 w-4" />} onClick={() => setMoreOpen(true)}>Generate more</Button>}
-          {mediaUrl.url && <a href={mediaUrl.url} download={sermon.media?.fileName} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-2 rounded-lg border border-cream-300 bg-white px-3 text-[13px] font-medium text-forest hover:bg-sage-50"><Download className="h-4 w-4" />Original</a>}
+          {mediaUrl.url && <a href={mediaUrl.url} download={sermon.media?.fileName} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-[13px] font-medium text-fg hover:bg-gray-50"><Download className="h-4 w-4" />Original</a>}
           {can("editor") && <Button variant="ghost" size="sm" icon={<Trash2 className="h-4 w-4" />} onClick={() => setDeleteOpen(true)} aria-label="Delete sermon">Delete</Button>}
         </div>
       </div>
@@ -125,20 +125,20 @@ export default function SermonWorkspace() {
           <Card className="overflow-hidden">
             {mediaUrl.url ? (
               isVideo ? (
-                <video ref={playerRef} src={mediaUrl.url} controls preload="metadata" className="aspect-video w-full bg-forest-900" />
+                <video ref={playerRef} src={mediaUrl.url} controls preload="metadata" className="aspect-video w-full bg-gray-950" />
               ) : (
-                <div className="bg-forest p-6"><audio ref={playerRef} src={mediaUrl.url} controls preload="metadata" className="w-full" /></div>
+                <div className="border-b border-gray-200 bg-gray-50 p-6"><audio ref={playerRef} src={mediaUrl.url} controls preload="metadata" className="w-full" /></div>
               )
             ) : (
-              <div className="flex aspect-video items-center justify-center bg-forest text-sm text-sage-200">{sermon.status === "uploading" ? "Recording not uploaded yet" : "Loading recording…"}</div>
+              <div className="flex aspect-video items-center justify-center bg-gray-100 text-sm text-fg-muted">{sermon.status === "uploading" ? "Recording not uploaded yet" : "Loading recording…"}</div>
             )}
             <div className="grid grid-cols-2 gap-4 p-5 text-sm sm:grid-cols-4">
-              <div><div className="text-xs text-charcoal-400">Preacher</div><div className="font-medium text-forest">{sermon.preacher || "—"}</div></div>
-              <div><div className="text-xs text-charcoal-400">Service date</div><div className="font-medium text-forest">{fmtServiceDate(sermon.serviceDate)}</div></div>
-              <div><div className="text-xs text-charcoal-400">Duration</div><div className="font-medium text-forest">{fmtDuration(sermon.durationSec)}</div></div>
-              <div><div className="text-xs text-charcoal-400">File</div><div className="truncate font-medium text-forest">{sermon.media?.size ? fmtBytes(sermon.media.size) : "—"}</div></div>
+              <div><div className="text-xs text-gray-500">Preacher</div><div className="font-medium text-fg">{sermon.preacher || "—"}</div></div>
+              <div><div className="text-xs text-gray-500">Service date</div><div className="font-medium text-fg">{fmtServiceDate(sermon.serviceDate)}</div></div>
+              <div><div className="text-xs text-gray-500">Duration</div><div className="font-medium text-fg">{fmtDuration(sermon.durationSec)}</div></div>
+              <div><div className="text-xs text-gray-500">File</div><div className="truncate font-medium text-fg">{sermon.media?.size ? fmtBytes(sermon.media.size) : "—"}</div></div>
             </div>
-            {sermon.description && <p className="border-t border-cream-200 px-5 py-4 text-sm text-charcoal-500">{sermon.description}</p>}
+            {sermon.description && <p className="border-t border-gray-200 px-5 py-4 text-sm text-fg-muted">{sermon.description}</p>}
           </Card>
 
           <Card className="p-5">
@@ -149,17 +149,17 @@ export default function SermonWorkspace() {
                 const status = s?.status || (sermon.status === "uploading" ? "pending" : "pending");
                 return (
                   <li key={st} className="flex items-start gap-3">
-                    {status === "done" ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-sage-500" /> : status === "running" ? <Loader2 className="mt-0.5 h-5 w-5 animate-spin text-forest" /> : status === "failed" ? <XCircle className="mt-0.5 h-5 w-5 text-[#B5544A]" /> : status === "skipped" ? <MinusCircle className="mt-0.5 h-5 w-5 text-cream-300" /> : <Circle className="mt-0.5 h-5 w-5 text-cream-300" />}
+                    {status === "done" ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-gray-500" /> : status === "running" ? <Loader2 className="mt-0.5 h-5 w-5 animate-spin text-fg" /> : status === "failed" ? <XCircle className="mt-0.5 h-5 w-5 text-red-500" /> : status === "skipped" ? <MinusCircle className="mt-0.5 h-5 w-5 text-gray-300" /> : <Circle className="mt-0.5 h-5 w-5 text-gray-300" />}
                     <div className="min-w-0">
-                      <div className={clsx("text-sm font-medium", status === "pending" ? "text-charcoal-400" : "text-forest")}>{STAGE_LABELS[st]}</div>
-                      {st === "render" && status === "running" && !!sermon.processing?.pendingRenders && <div className="text-xs text-charcoal-500">{sermon.processing.pendingRenders} remaining</div>}
-                      {s?.error && <div className="text-xs text-[#9A3B30]">{s.error}</div>}
+                      <div className={clsx("text-sm font-medium", status === "pending" ? "text-gray-500" : "text-fg")}>{STAGE_LABELS[st]}</div>
+                      {st === "render" && status === "running" && !!sermon.processing?.pendingRenders && <div className="text-xs text-fg-muted">{sermon.processing.pendingRenders} remaining</div>}
+                      {s?.error && <div className="text-xs text-red-600">{s.error}</div>}
                     </div>
                   </li>
                 );
               })}
             </ol>
-            {processing && <p className="mt-5 rounded-lg bg-sage-50 px-3 py-2 text-xs text-forest">You can leave this page. We'll notify you when content is ready.</p>}
+            {processing && <p className="mt-5 rounded-lg bg-gray-50 px-3 py-2 text-xs text-fg">You can leave this page. We'll notify you when content is ready.</p>}
             {sermon.status === "ready" && sermonAssets.length > 0 && (
               <Button className="mt-5 w-full" onClick={() => navigate(`/studio?sermon=${sermon.id}&status=needs_review`)}>Review content</Button>
             )}
@@ -177,15 +177,15 @@ export default function SermonWorkspace() {
         )
       )}
       {tab === "history" && (
-        <Card className="divide-y divide-cream-200">
+        <Card className="divide-y divide-gray-200">
           {(sermon.processing?.history || []).length === 0 ? (
-            <p className="p-5 text-sm text-charcoal-500">No processing activity yet.</p>
+            <p className="p-5 text-sm text-fg-muted">No processing activity yet.</p>
           ) : (
             [...(sermon.processing?.history || [])].reverse().map((h, i) => (
               <div key={i} className="flex gap-3 px-5 py-3 text-sm">
-                <span className={clsx("mt-1.5 h-2 w-2 shrink-0 rounded-full", h.level === "error" ? "bg-[#B5544A]" : "bg-sage-500")} />
-                <div className="min-w-0 flex-1 text-charcoal">{h.message}</div>
-                <time className="shrink-0 text-xs text-charcoal-400">{new Date(h.at).toLocaleString()}</time>
+                <span className={clsx("mt-1.5 h-2 w-2 shrink-0 rounded-full", h.level === "error" ? "bg-red-500" : "bg-gray-400")} />
+                <div className="min-w-0 flex-1 text-gray-800">{h.message}</div>
+                <time className="shrink-0 text-xs text-gray-500">{new Date(h.at).toLocaleString()}</time>
               </div>
             ))
           )}
@@ -216,7 +216,7 @@ export default function SermonWorkspace() {
           </>
         }
       >
-        <p className="text-sm text-charcoal">This permanently deletes “{sermon.title}”, its original recording and transcript.</p>
+        <p className="text-sm text-gray-800">This permanently deletes “{sermon.title}”, its original recording and transcript.</p>
         {sermonAssets.length > 0 && (
           <Notice tone="warn">
             {sermonAssets.length} generated asset{sermonAssets.length === 1 ? "" : "s"} — including any scheduled or published records — will also be deleted. Content already posted on other platforms is not affected.
@@ -257,7 +257,7 @@ function ResumeUpload({ sermon, churchId }: { sermon: Sermon; churchId: string }
         tone="warn"
         title="The recording hasn't finished uploading"
         action={
-          <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg bg-forest px-3 text-[13px] font-medium text-cream">
+          <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg bg-brand-500 px-3 text-[13px] font-medium text-white hover:bg-brand-600">
             <UploadCloud className="h-4 w-4" /> {progress !== null ? `${Math.round(progress * 100)}%` : "Upload recording"}
             <input type="file" className="sr-only" accept="audio/*,video/*" onChange={(e) => go(e.target.files?.[0])} disabled={progress !== null} />
           </label>
@@ -329,28 +329,28 @@ function TranscriptPanel({ churchId, sermon, transcript, loading, onSeek, canEdi
   const highlight = (text: string) => {
     if (!term) return text;
     const parts = text.split(new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "ig"));
-    return parts.map((p, k) => (p.toLowerCase() === term ? <mark key={k} className="rounded bg-gold-100 px-0.5 text-forest">{p}</mark> : p));
+    return parts.map((p, k) => (p.toLowerCase() === term ? <mark key={k} className="rounded bg-brand-100 px-0.5 text-fg">{p}</mark> : p));
   };
 
   return (
     <Card>
-      <div className="flex flex-col gap-3 border-b border-cream-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative sm:w-80">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <input className="field pl-9" placeholder="Search within transcript" aria-label="Search within transcript" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <p className="text-xs text-charcoal-400">
+        <p className="text-xs text-gray-500">
           {term ? `${segs.length} matching segment${segs.length === 1 ? "" : "s"}` : `${transcript.segments.length} segments`} · {transcript.source === "import" ? "Imported transcript" : "Automatic transcript"}
           {!transcript.hasTimestamps && " · no timestamps"}
         </p>
       </div>
-      <ol className="max-h-[70vh] divide-y divide-cream-100 overflow-y-auto">
+      <ol className="max-h-[70vh] divide-y divide-gray-100 overflow-y-auto">
         {segs.map((s) => (
-          <li key={s.i} className="group flex gap-4 px-4 py-3 hover:bg-cream-50">
+          <li key={s.i} className="group flex gap-4 px-4 py-3 hover:bg-gray-50">
             {transcript.hasTimestamps ? (
-              <button onClick={() => onSeek(s.start)} className="w-14 shrink-0 pt-0.5 text-left font-mono text-xs text-sage-700 hover:text-forest hover:underline" aria-label={`Play from ${fmtClock(s.start)}`}>{fmtDuration(s.start)}</button>
+              <button onClick={() => onSeek(s.start)} className="w-14 shrink-0 pt-0.5 text-left font-mono text-xs text-brand-700 hover:text-fg hover:underline" aria-label={`Play from ${fmtClock(s.start)}`}>{fmtDuration(s.start)}</button>
             ) : (
-              <span className="w-14 shrink-0 pt-0.5 font-mono text-xs text-charcoal-400">#{s.i + 1}</span>
+              <span className="w-14 shrink-0 pt-0.5 font-mono text-xs text-gray-500">#{s.i + 1}</span>
             )}
             <div className="min-w-0 flex-1">
               {editing === s.i ? (
@@ -362,13 +362,13 @@ function TranscriptPanel({ churchId, sermon, transcript, loading, onSeek, canEdi
                   </div>
                 </div>
               ) : (
-                <p className="text-[15px] leading-relaxed text-charcoal">{highlight(s.text)}</p>
+                <p className="text-[15px] leading-relaxed text-gray-800">{highlight(s.text)}</p>
               )}
             </div>
             {canEdit && editing !== s.i && (
               <div className="flex shrink-0 gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                <button className="rounded p-1.5 text-charcoal-400 hover:bg-sage-100 hover:text-forest" onClick={() => { setEditing(s.i); setDraft(s.text); }} aria-label="Correct this segment" title="Correct transcript"><Pencil className="h-4 w-4" /></button>
-                <button className="rounded p-1.5 text-charcoal-400 hover:bg-sage-100 hover:text-forest" onClick={() => setQuoteFor(s)} aria-label="Create quote graphic" title="Create quote graphic"><Quote className="h-4 w-4" /></button>
+                <button className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-fg" onClick={() => { setEditing(s.i); setDraft(s.text); }} aria-label="Correct this segment" title="Correct transcript"><Pencil className="h-4 w-4" /></button>
+                <button className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-fg" onClick={() => setQuoteFor(s)} aria-label="Create quote graphic" title="Create quote graphic"><Quote className="h-4 w-4" /></button>
               </div>
             )}
           </li>
@@ -418,48 +418,48 @@ function SummaryPanel({ sermon, onSeek }: { sermon: Sermon; onSeek: (t: number) 
   const Section = ({ title, items }: { title: string; items?: string[] }) =>
     items?.length ? (
       <div>
-        <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">{title}</h3>
-        <ul className="space-y-1.5">{items.map((x, i) => <li key={i} className="flex gap-2 text-[15px] leading-relaxed text-charcoal"><span className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-gold" />{x}</li>)}</ul>
+        <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">{title}</h3>
+        <ul className="space-y-1.5">{items.map((x, i) => <li key={i} className="flex gap-2 text-[15px] leading-relaxed text-gray-800"><span className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-brand-500" />{x}</li>)}</ul>
       </div>
     ) : null;
   return (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
       <Card className="space-y-6 p-6">
         <div>
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Main theme</h3>
-          <p className="font-serif text-2xl leading-snug text-forest">{s.mainTheme}</p>
+          <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Main theme</h3>
+          <p className="font-semibold tracking-tight text-2xl leading-snug text-fg">{s.mainTheme}</p>
         </div>
         <Section title="Key points" items={s.keyPoints} />
         <Section title="Practical applications" items={s.practicalApplications} />
         <Section title="Illustrations" items={s.illustrations} />
-        {s.conclusion && <div><h3 className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Conclusion</h3><p className="text-[15px] leading-relaxed text-charcoal">{s.conclusion}</p></div>}
+        {s.conclusion && <div><h3 className="mb-2 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Conclusion</h3><p className="text-[15px] leading-relaxed text-gray-800">{s.conclusion}</p></div>}
       </Card>
       <div className="space-y-6">
         <Card className="p-5">
-          <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Scripture references</h3>
+          <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Scripture references</h3>
           {sermon.scriptureReferences?.length ? (
             <ul className="space-y-2.5">
               {sermon.scriptureReferences.map((r, i) => (
                 <li key={i} className="text-sm">
-                  <div className="flex items-center gap-2 font-medium text-forest">{r.reference}{!r.verified && <span className="rounded bg-gold-100 px-1.5 text-[11px] font-medium text-gold-700">check</span>}</div>
-                  <div className="text-xs text-charcoal-500">{r.context}</div>
+                  <div className="flex items-center gap-2 font-medium text-fg">{r.reference}{!r.verified && <span className="rounded bg-brand-100 px-1.5 text-[11px] font-medium text-brand-700">check</span>}</div>
+                  <div className="text-xs text-fg-muted">{r.context}</div>
                 </li>
               ))}
             </ul>
-          ) : <p className="text-sm text-charcoal-500">No scripture references were identified.</p>}
+          ) : <p className="text-sm text-fg-muted">No scripture references were identified.</p>}
         </Card>
         <Card className="p-5">
-          <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Important statements</h3>
+          <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Important statements</h3>
           {s.importantStatements?.length ? (
             <ul className="space-y-3">
               {s.importantStatements.map((x, i) => (
-                <li key={i} className="border-l-2 border-gold pl-3 text-sm italic leading-relaxed text-charcoal">
+                <li key={i} className="border-l-2 border-brand-500 pl-3 text-sm italic leading-relaxed text-gray-800">
                   “{x.text}”
-                  {x.start !== null && <button onClick={() => onSeek(x.start!)} className="ml-1 font-mono text-xs not-italic text-sage-700 hover:underline">{fmtDuration(x.start)}</button>}
+                  {x.start !== null && <button onClick={() => onSeek(x.start!)} className="ml-1 font-mono text-xs not-italic text-brand-700 hover:underline">{fmtDuration(x.start)}</button>}
                 </li>
               ))}
             </ul>
-          ) : <p className="text-sm text-charcoal-500">None identified.</p>}
+          ) : <p className="text-sm text-fg-muted">None identified.</p>}
         </Card>
         {!!s.uncertainties?.length && (
           <Notice tone="warn" title="Parts of the transcript were unclear">
@@ -500,7 +500,7 @@ function EditSermonModal({ open, onClose, sermon, churchId }: { open: boolean; o
         </div>
         <Input label="Scripture reference" value={m.scripture} onChange={(e) => setM({ ...m, scripture: e.target.value })} />
         <Textarea label="Description" value={m.description} onChange={(e) => setM({ ...m, description: e.target.value })} rows={3} />
-        <p className="text-xs text-charcoal-400">Changes apply to the sermon record. Content already generated keeps its current text until you edit it.</p>
+        <p className="text-xs text-gray-500">Changes apply to the sermon record. Content already generated keeps its current text until you edit it.</p>
       </div>
     </Modal>
   );
@@ -541,7 +541,7 @@ function GenerateMoreModal({ open, onClose, churchId, sermonId }: { open: boolea
         </>
       }
     >
-      <p className="mb-4 text-sm text-charcoal-500">New content is added alongside what you already have and goes to review.</p>
+      <p className="mb-4 text-sm text-fg-muted">New content is added alongside what you already have and goes to review.</p>
       <div className="grid gap-2.5 sm:grid-cols-2">
         {opts.map((o) => <Checkbox key={o.id} checked={types.includes(o.id)} onChange={(v) => setTypes(v ? [...types, o.id] : types.filter((t) => t !== o.id))} label={o.label} />)}
       </div>

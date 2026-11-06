@@ -22,15 +22,15 @@ const Settings = lazy(() => import("./pages/Settings"));
 
 function SetupRequired() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-cream p-6">
+    <div className="flex min-h-screen items-center justify-center bg-canvas p-6">
       <div className="card max-w-lg p-8">
         <Logo className="mb-6" />
         <h1 className="h-page">Configuration needed</h1>
-        <p className="mt-3 text-sm text-charcoal-500">
-          Selah Studio needs its Firebase project settings before it can run. Add these environment variables to your Netlify site (or <code className="rounded bg-cream-200 px-1">web/.env.local</code> for development), then redeploy:
+        <p className="mt-3 text-sm text-fg-muted">
+          Selah Studio needs its Firebase project settings before it can run. Add these environment variables to your Netlify site (or <code className="rounded bg-gray-100 px-1">web/.env.local</code> for development), then redeploy:
         </p>
-        <ul className="mt-4 space-y-1 font-mono text-[13px] text-forest">{missingEnv.map((k) => <li key={k}>{k}</li>)}</ul>
-        <p className="mt-4 text-xs text-charcoal-400">See README.md → Setup for the full checklist.</p>
+        <ul className="mt-4 space-y-1 font-mono text-[13px] text-fg">{missingEnv.map((k) => <li key={k}>{k}</li>)}</ul>
+        <p className="mt-4 text-xs text-gray-500">See README.md → Setup for the full checklist.</p>
       </div>
     </div>
   );
@@ -38,7 +38,7 @@ function SetupRequired() {
 
 function FullPageLoading() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-cream">
+    <div className="flex min-h-screen items-center justify-center bg-canvas">
       <PageLoading />
     </div>
   );
@@ -65,7 +65,7 @@ function MembershipGuard({ children }: { children: ReactNode }) {
   if (loading) return <FullPageLoading />;
   if (!member || !church) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-cream p-6">
+      <div className="flex min-h-screen items-center justify-center bg-canvas p-6">
         <EmptyState title="You no longer have access" action={<div className="flex gap-2"><Button onClick={() => (window.location.href = "/onboarding")}>Create or join a church</Button><Button variant="ghost" onClick={signOut}>Sign out</Button></div>}>
           Your access to this church workspace was removed, or the workspace no longer exists.
         </EmptyState>
@@ -80,7 +80,7 @@ function ChurchApp() {
   if (loading) return <FullPageLoading />;
   if (profileError && !profile) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-cream p-6">
+      <div className="flex min-h-screen items-center justify-center bg-canvas p-6">
         <EmptyState title="We couldn't load your account" action={<Button onClick={() => window.location.reload()}>Try again</Button>}>
           Check your connection and try again. If this continues, the backend may not be deployed yet.
         </EmptyState>

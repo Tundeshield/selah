@@ -133,17 +133,17 @@ export default function Onboarding() {
   const toggle = (arr: string[], v: string, set: (x: string[]) => void) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-screen bg-canvas">
       <div className="mx-auto max-w-2xl px-5 py-10">
         <div className="mb-10 flex items-center justify-between">
           <Logo />
-          <button onClick={signOut} className="text-sm text-charcoal-400 hover:text-forest">Sign out</button>
+          <button onClick={signOut} className="text-sm text-gray-500 hover:text-fg">Sign out</button>
         </div>
 
         {!churchId && invites.length > 0 && (
           <div className="card mb-8 p-6">
             <h2 className="h-section">You've been invited</h2>
-            <p className="mt-1 text-sm text-charcoal-500">Join your church's existing workspace.</p>
+            <p className="mt-1 text-sm text-fg-muted">Join your church's existing workspace.</p>
             {user && !user.emailVerified && (
               <div className="mt-3">
                 <Notice tone="info">
@@ -154,24 +154,24 @@ export default function Onboarding() {
             )}
             <div className="mt-4 space-y-2">
               {invites.map((i) => (
-                <div key={i.id} className="flex items-center justify-between gap-3 rounded-lg border border-cream-300 px-4 py-3">
+                <div key={i.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-4 py-3">
                   <div>
-                    <div className="font-medium text-forest">{i.churchName}</div>
-                    <div className="text-xs capitalize text-charcoal-400">as {i.role}</div>
+                    <div className="font-medium text-fg">{i.churchName}</div>
+                    <div className="text-xs capitalize text-gray-500">as {i.role}</div>
                   </div>
                   <Button size="sm" onClick={() => join(i.id)} loading={busy}>Join workspace</Button>
                 </div>
               ))}
             </div>
-            <p className="mt-4 text-xs text-charcoal-400">Or create a new church workspace below.</p>
+            <p className="mt-4 text-xs text-gray-500">Or create a new church workspace below.</p>
           </div>
         )}
 
         <ol className="mb-8 flex gap-2" aria-label="Onboarding progress">
           {STEPS.map((s, i) => (
             <li key={s} className="flex-1">
-              <div className={clsx("h-1 rounded-full", i <= step ? "bg-forest" : "bg-cream-300")} />
-              <div className={clsx("mt-2 hidden text-xs sm:block", i === step ? "font-medium text-forest" : "text-charcoal-400")}>{s}</div>
+              <div className={clsx("h-1 rounded-full", i <= step ? "bg-brand-500" : "bg-gray-200")} />
+              <div className={clsx("mt-2 hidden text-xs sm:block", i === step ? "font-medium text-fg" : "text-gray-500")}>{s}</div>
             </li>
           ))}
         </ol>
@@ -183,7 +183,7 @@ export default function Onboarding() {
             <form onSubmit={createChurch} className="space-y-5" noValidate>
               <div>
                 <h1 className="h-page">Tell us about your church</h1>
-                <p className="mt-2 text-sm text-charcoal-500">Just the essentials — you can change everything later in Church Settings.</p>
+                <p className="mt-2 text-sm text-fg-muted">Just the essentials — you can change everything later in Church Settings.</p>
               </div>
               <Input label="Church name" required value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} placeholder="e.g. Grace Community Church" />
               <div className="grid gap-4 sm:grid-cols-2">
@@ -209,12 +209,12 @@ export default function Onboarding() {
             <div className="space-y-5">
               <div>
                 <h1 className="h-page">Add your church logo</h1>
-                <p className="mt-2 text-sm text-charcoal-500">Used on quote graphics and video clips. PNG with a transparent background works best.</p>
+                <p className="mt-2 text-sm text-fg-muted">Used on quote graphics and video clips. PNG with a transparent background works best.</p>
               </div>
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-cream-300 bg-cream-50 px-6 py-10 text-center hover:border-sage-300">
-                {logoPreview ? <img src={logoPreview} alt="Church logo" className="h-24 object-contain" /> : <ImagePlus className="h-8 w-8 text-sage-500" />}
-                <span className="text-sm font-medium text-forest">{logoPreview ? "Choose a different image" : "Choose a logo image"}</span>
-                <span className="text-xs text-charcoal-400">PNG, JPG, WEBP or SVG · up to 5 MB</span>
+              <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-6 py-10 text-center hover:border-gray-300">
+                {logoPreview ? <img src={logoPreview} alt="Church logo" className="h-24 object-contain" /> : <ImagePlus className="h-8 w-8 text-gray-500" />}
+                <span className="text-sm font-medium text-fg">{logoPreview ? "Choose a different image" : "Choose a logo image"}</span>
+                <span className="text-xs text-gray-500">PNG, JPG, WEBP or SVG · up to 5 MB</span>
                 <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="sr-only" onChange={(e) => onLogo(e.target.files?.[0])} />
               </label>
               <div className="flex justify-between">
@@ -228,7 +228,7 @@ export default function Onboarding() {
             <div className="space-y-6">
               <div>
                 <h1 className="h-page">What should we prepare?</h1>
-                <p className="mt-2 text-sm text-charcoal-500">Choose the content Selah Studio generates from each sermon.</p>
+                <p className="mt-2 text-sm text-fg-muted">Choose the content Selah Studio generates from each sermon.</p>
               </div>
               <fieldset>
                 <legend className="label">Content types</legend>
@@ -253,7 +253,7 @@ export default function Onboarding() {
             <div className="space-y-5">
               <div>
                 <h1 className="h-page">Invite your team</h1>
-                <p className="mt-2 text-sm text-charcoal-500">Optional. Invited people join when they sign up with the same email.</p>
+                <p className="mt-2 text-sm text-fg-muted">Optional. Invited people join when they sign up with the same email.</p>
               </div>
               <form onSubmit={invite} className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <Input className="flex-1" label="Email" type="email" value={invEmail} onChange={(e) => setInvEmail(e.target.value)} />
@@ -266,7 +266,7 @@ export default function Onboarding() {
               </form>
               {invited.length > 0 && (
                 <ul className="space-y-1.5">
-                  {invited.map((e) => <li key={e} className="flex items-center gap-2 text-sm text-forest"><Check className="h-4 w-4 text-sage-500" />{e}</li>)}
+                  {invited.map((e) => <li key={e} className="flex items-center gap-2 text-sm text-fg"><Check className="h-4 w-4 text-gray-500" />{e}</li>)}
                 </ul>
               )}
               <div className="flex justify-between">
@@ -278,9 +278,9 @@ export default function Onboarding() {
 
           {step === 4 && (
             <div className="space-y-5 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-sage-100 text-forest"><Upload className="h-6 w-6" /></div>
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-fg"><Upload className="h-6 w-6" /></div>
               <h1 className="h-page">Your next sermon starts here.</h1>
-              <p className="mx-auto max-w-md text-sm text-charcoal-500">Upload a sermon recording and Selah Studio will help turn it into videos, graphics and content for your church.</p>
+              <p className="mx-auto max-w-md text-sm text-fg-muted">Upload a sermon recording and Selah Studio will help turn it into videos, graphics and content for your church.</p>
               <div className="flex flex-col justify-center gap-2 pt-2 sm:flex-row">
                 <Button size="lg" onClick={() => finish(true)} icon={<Upload className="h-4 w-4" />}>Upload sermon</Button>
                 <Button size="lg" variant="ghost" onClick={() => finish(false)}>Go to Overview</Button>
