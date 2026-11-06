@@ -1,0 +1,24 @@
+name: Diagnose backend (read logs)
+
+# Read-only: prints recent Cloud Functions errors/logs for troubleshooting.
+# Triggered by editing .github/diagnose-trigger or from the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths: [".github/diagnose-trigger"]
+  workflow_dispatch:
+
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Recent processing logs
+        run: |
+          P=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.default)")
+          gcloud logging read 'resource.type="cloud_run_revision" AND (resource.labels.service_name="processsermontask" OR resource.labels.service_name="renderassettask") AND severity>=DEFAULT' \
+            --project "$P" --freshness=1d --limit=60 --format='value(timestamp,severity,textPayload,jsonPayload.message)' | cut -c1-1500
