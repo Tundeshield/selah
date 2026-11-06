@@ -44,7 +44,7 @@ Upload ─► probe ─► transcribe ─► analyse ─► generate ─► rend
 
 ### 1. Firebase project
 
-1. Create a Firebase project (the repo defaults to the id `selah-studio`; change `.firebaserc` if yours differs). Upgrade it to the **Blaze** plan (required for Cloud Functions / Cloud Tasks).
+1. Create a Firebase project (the repo is set to the id `selah-studio-hnxp`; change `.firebaserc` if yours differs). Upgrade it to the **Blaze** plan (required for Cloud Functions / Cloud Tasks).
 2. Enable **Authentication** → Email/Password and Google. Add your Netlify domain under Authentication → Settings → Authorized domains.
 3. Create a **Firestore** database (production mode) and enable **Storage**.
 4. Register a **Web app** and copy its config.
