@@ -213,7 +213,7 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
             <option value="none">Hidden</option>
           </Select>
           <Select label="Default graphic template" value={f.v.graphicTemplate} onChange={(e) => f.setV({ ...f.v, graphicTemplate: e.target.value })}>
-            {Object.entries(TEMPLATES).map(([id, t]) => <option key={id} value={id}>{t.label}</option>)}
+            {Object.entries(TEMPLATES).map(([id, t]) => <option key={id} value={id}>{t.label}{t.art ? " (artwork)" : ""}</option>)}
           </Select>
         </div>
       </fieldset>

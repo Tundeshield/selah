@@ -11,22 +11,215 @@ export interface GraphicSettings {
   align: "left" | "center";
   logoPosition: "top" | "bottom" | "none";
   size: "square" | "portrait" | "story" | "landscape";
+  /** Varies the generated artwork; unset = derived from the quote. */
+  artSeed?: number;
 }
 
 export const GRAPHIC_SIZES: Record<GraphicSettings["size"], { w: number; h: number; label: string }> = {
-  square: { w: 1080, h: 1080, label: "Square · 1080×1080" },
-  portrait: { w: 1080, h: 1350, label: "Portrait · 1080×1350" },
-  story: { w: 1080, h: 1920, label: "Story · 1080×1920" },
-  landscape: { w: 1600, h: 900, label: "Landscape · 1600×900" },
+  square: { w: 1080, h: 1080, label: "Square 1:1" },
+  portrait: { w: 1080, h: 1350, label: "Portrait 4:5" },
+  story: { w: 1080, h: 1920, label: "Story 9:16" },
+  landscape: { w: 1600, h: 900, label: "Wide 16:9" },
 };
 
-export const TEMPLATES: Record<string, { label: string; bg: string; fg: string; accent: string; sub: string; rule?: boolean; frame?: boolean }> = {
-  cream: { label: "Paper", bg: "#F4F4F1", fg: "#0B0D0E", accent: "#0D8D86", sub: "#57544F" },
-  forest: { label: "Ink", bg: "#0B0D0E", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#A8A59F" },
-  sage: { label: "Tint", bg: "#CCF7F0", fg: "#0B0D0E", accent: "#0F706B", sub: "#115A57" },
-  "gold-line": { label: "Frame", bg: "#FFFFFF", fg: "#0B0D0E", accent: "#2ECBBE", sub: "#57544F", frame: true },
-  "photo-dark": { label: "Glow", bg: "#2ECBBE", fg: "#0B0D0E", accent: "#0B0D0E", sub: "#052C2B", rule: true },
+type Rng = () => number;
+type ArtFn = (ctx: CanvasRenderingContext2D, w: number, h: number, rnd: Rng, accent: string) => void;
+
+export interface Template {
+  label: string;
+  group: "plain" | "art";
+  bg: string;
+  fg: string;
+  accent: string;
+  sub: string;
+  frame?: boolean;
+  art?: ArtFn;
+}
+
+/** Deterministic PRNG so the same seed always gives the same artwork. */
+function mulberry32(a: number): Rng {
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hashStr(str: string) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+function rgba(hex: string, a: number) {
+  const m = hex.replace("#", "");
+  const n = parseInt(m.length === 3 ? m.split("").map((c) => c + c).join("") : m, 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+function glow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, a: number) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, rgba(color, a));
+  g.addColorStop(1, rgba(color, 0));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+}
+function grain(ctx: CanvasRenderingContext2D, w: number, h: number, rnd: Rng, light: boolean, amount = 0.05) {
+  const n = Math.round((w * h) / 90);
+  ctx.fillStyle = light ? `rgba(255,255,255,${amount})` : `rgba(0,0,0,${amount})`;
+  const d = Math.max(1, Math.round(w / 700));
+  for (let i = 0; i < n; i++) ctx.fillRect(rnd() * w, rnd() * h, d, d);
+}
+
+const ART: Record<string, ArtFn> = {
+  ripples: (ctx, w, h, rnd, accent) => {
+    const cx = w * (0.62 + rnd() * 0.3);
+    const cy = h * (0.05 + rnd() * 0.2);
+    glow(ctx, cx, cy, Math.max(w, h) * 0.7, accent, 0.28);
+    const step = w * (0.045 + rnd() * 0.02);
+    ctx.lineWidth = Math.max(1, w / 540);
+    for (let i = 1; i < 40; i++) {
+      ctx.strokeStyle = rgba(accent, Math.max(0, 0.42 - i * 0.012));
+      ctx.beginPath();
+      ctx.arc(cx, cy, i * step, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    grain(ctx, w, h, rnd, true, 0.035);
+  },
+  aurora: (ctx, w, h, rnd, accent) => {
+    const cols = [accent, "#0E7490", "#1D4ED8", accent, "#A5F3FC"];
+    cols.forEach((c, i) => glow(ctx, w * rnd(), h * (i % 2 ? 0.75 + rnd() * 0.3 : rnd() * 0.35), Math.max(w, h) * (0.45 + rnd() * 0.3), c, i === 4 ? 0.12 : 0.38));
+    ctx.fillStyle = "rgba(6,16,15,0.35)";
+    ctx.fillRect(0, 0, w, h);
+    grain(ctx, w, h, rnd, true, 0.05);
+  },
+  dawn: (ctx, w, h, rnd, accent) => {
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "#FFFFFF");
+    g.addColorStop(1, rgba(accent, 0.35));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    const sx = w * (0.3 + rnd() * 0.4);
+    glow(ctx, sx, h * 1.02, h * 0.75, accent, 0.55);
+    ctx.lineWidth = Math.max(1, w / 900);
+    for (let i = 0; i < 9; i++) {
+      const y = h * (0.8 + i * 0.024);
+      ctx.strokeStyle = rgba("#0B0D0E", 0.05 + i * 0.008);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+    grain(ctx, w, h, rnd, false, 0.03);
+  },
+  waves: (ctx, w, h, rnd, accent) => {
+    glow(ctx, w * 0.5, h * 0.1, w, "#1D4ED8", 0.18);
+    const bands = 6;
+    for (let b = 0; b < bands; b++) {
+      const base = h * (0.84 + b * 0.028);
+      const amp = h * (0.012 + rnd() * 0.02);
+      const freq = (1 + rnd() * 1.6) * Math.PI * 2;
+      const ph = rnd() * Math.PI * 2;
+      ctx.fillStyle = rgba(accent, 0.1 + b * 0.07);
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      for (let x = 0; x <= w; x += w / 60) ctx.lineTo(x, base + Math.sin((x / w) * freq + ph) * amp);
+      ctx.lineTo(w, h);
+      ctx.closePath();
+      ctx.fill();
+    }
+    grain(ctx, w, h, rnd, true, 0.035);
+  },
+  contour: (ctx, w, h, rnd, accent) => {
+    const cx = w * (rnd() < 0.5 ? 0.1 + rnd() * 0.15 : 0.75 + rnd() * 0.15);
+    const cy = h * (rnd() < 0.5 ? 0.1 + rnd() * 0.15 : 0.8 + rnd() * 0.15);
+    const ph = [rnd() * 6, rnd() * 6, rnd() * 6];
+    const step = Math.max(w, h) * 0.035;
+    ctx.lineWidth = Math.max(1, w / 600);
+    for (let k = 1; k < 34; k++) {
+      ctx.strokeStyle = rgba(accent, k % 5 === 0 ? 0.5 : 0.24);
+      ctx.beginPath();
+      for (let a = 0; a <= Math.PI * 2 + 0.01; a += Math.PI / 90) {
+        const r = k * step * (1 + 0.12 * Math.sin(3 * a + ph[0] + k * 0.12) + 0.07 * Math.sin(5 * a + ph[1]) + 0.05 * Math.sin(2 * a + ph[2] - k * 0.1));
+        const x = cx + Math.cos(a) * r;
+        const y = cy + Math.sin(a) * r;
+        if (a === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+  },
+  rays: (ctx, w, h, rnd, accent) => {
+    const ox = w * (0.2 + rnd() * 0.6);
+    const oy = -h * 0.08;
+    glow(ctx, ox, oy, Math.max(w, h) * 0.9, accent, 0.32);
+    const n = 14 + Math.floor(rnd() * 8);
+    const len = Math.hypot(w, h) * 1.2;
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI * (0.12 + (0.76 * (i + rnd() * 0.5)) / n);
+      const spread = 0.012 + rnd() * 0.03;
+      ctx.fillStyle = rgba(accent, 0.04 + rnd() * 0.07);
+      ctx.beginPath();
+      ctx.moveTo(ox, oy);
+      ctx.lineTo(ox + Math.cos(a - spread) * len, oy + Math.sin(a - spread) * len);
+      ctx.lineTo(ox + Math.cos(a + spread) * len, oy + Math.sin(a + spread) * len);
+      ctx.closePath();
+      ctx.fill();
+    }
+    grain(ctx, w, h, rnd, true, 0.035);
+  },
+  dots: (ctx, w, h, rnd, accent) => {
+    const gap = w / 30;
+    const corner = Math.floor(rnd() * 4);
+    const ox = corner % 2 ? w : 0;
+    const oy = corner > 1 ? h : 0;
+    const maxD = Math.hypot(w, h) * 0.42;
+    ctx.fillStyle = accent;
+    for (let y = gap / 2; y < h; y += gap)
+      for (let x = gap / 2; x < w; x += gap) {
+        const t = 1 - Math.hypot(x - ox, y - oy) / maxD;
+        if (t <= 0) continue;
+        ctx.beginPath();
+        ctx.arc(x, y, gap * 0.42 * t * t, 0, Math.PI * 2);
+        ctx.fill();
+      }
+  },
 };
+
+/** Ids are stored on assets; keep old ids working. */
+export const TEMPLATES: Record<string, Template> = {
+  cream: { label: "Paper", group: "plain", bg: "#F4F4F1", fg: "#0B0D0E", accent: "#0D8D86", sub: "#57544F" },
+  forest: { label: "Ink", group: "plain", bg: "#0B0D0E", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#A8A59F" },
+  sage: { label: "Tint", group: "plain", bg: "#CCF7F0", fg: "#0B0D0E", accent: "#0F706B", sub: "#115A57" },
+  "gold-line": { label: "Frame", group: "plain", bg: "#FFFFFF", fg: "#0B0D0E", accent: "#2ECBBE", sub: "#57544F", frame: true },
+  "photo-dark": { label: "Teal", group: "plain", bg: "#2ECBBE", fg: "#0B0D0E", accent: "#0B0D0E", sub: "#052C2B" },
+  ripples: { label: "Ripples", group: "art", bg: "#0B0D0E", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#B9C2C1", art: ART.ripples },
+  aurora: { label: "Aurora", group: "art", bg: "#06100F", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#C6D3D2", art: ART.aurora },
+  rays: { label: "Light", group: "art", bg: "#081417", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#B9C2C1", art: ART.rays },
+  waves: { label: "Waves", group: "art", bg: "#0A1220", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#B4BFCB", art: ART.waves },
+  dawn: { label: "Dawn", group: "art", bg: "#FFFFFF", fg: "#0B0D0E", accent: "#0D8D86", sub: "#3F4A49", art: ART.dawn },
+  contour: { label: "Contour", group: "art", bg: "#F4F4F1", fg: "#0B0D0E", accent: "#0D8D86", sub: "#57544F", art: ART.contour },
+  dots: { label: "Halftone", group: "art", bg: "#FFFFFF", fg: "#0B0D0E", accent: "#2ECBBE", sub: "#57544F", art: ART.dots },
+};
+
+/** Paints only the background/artwork — used for the full graphic and template swatches. */
+export function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, templateId: string, accent?: string, seed = 1) {
+  const t = TEMPLATES[templateId] || TEMPLATES.cream;
+  const a = accent || t.accent;
+  ctx.fillStyle = t.bg;
+  ctx.fillRect(0, 0, w, h);
+  if (t.art) {
+    ctx.save();
+    t.art(ctx, w, h, mulberry32(seed), a);
+    ctx.restore();
+  }
+  if (t.frame) {
+    const pad = Math.round(w * 0.1);
+    ctx.strokeStyle = a;
+    ctx.lineWidth = Math.max(2, w / 270);
+    ctx.strokeRect(pad * 0.45, pad * 0.45, w - pad * 0.9, h - pad * 0.9);
+  }
+}
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
   const words = text.split(/\s+/);
@@ -64,16 +257,8 @@ export async function drawGraphic(
     /* fonts optional */
   }
   const accent = t.accent === "#2ECBBE" && opts.brandAccent ? opts.brandAccent : t.accent;
-
-  ctx.fillStyle = t.bg;
-  ctx.fillRect(0, 0, w, h);
+  drawBackground(ctx, w, h, s.template, accent, s.artSeed ?? hashStr(s.quote || ""));
   const pad = Math.round(w * 0.1);
-
-  if (t.frame) {
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 4;
-    ctx.strokeRect(pad * 0.45, pad * 0.45, w - pad * 0.9, h - pad * 0.9);
-  }
 
   // Quote mark
   ctx.fillStyle = accent;

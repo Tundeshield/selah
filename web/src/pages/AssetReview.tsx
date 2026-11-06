@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { collection, orderBy, query } from "firebase/firestore";
 import clsx from "clsx";
-import { ArrowLeft, Check, CalendarPlus, Download, MessageSquareWarning, RefreshCw, Trash2, AlertTriangle, Loader2, Send, Mic2, Plus, Minus, History, Upload as UploadIcon } from "lucide-react";
+import { ArrowLeft, Check, CalendarPlus, Download, MessageSquareWarning, RefreshCw, Trash2, AlertTriangle, Loader2, Send, Mic2, Plus, Minus, History, Upload as UploadIcon, Shuffle } from "lucide-react";
 import { useChurch } from "../context/ChurchContext";
 import { db } from "../lib/firebase";
 import { useDocData, useQueryData, useStorageUrl, useUnsavedWarning } from "../lib/hooks";
 import { api } from "../lib/api";
 import { ASSET_TYPE, assetTypeLabel, platformLabel } from "../lib/constants";
 import { errMessage, fmtClock, fmtDuration, fmtRelative, tsDate } from "../lib/format";
-import { GRAPHIC_SIZES, TEMPLATES } from "../lib/graphic";
+import { GRAPHIC_SIZES, TEMPLATES, drawBackground } from "../lib/graphic";
 import type { Asset, AssetVersion, Cue, Revision, Sermon } from "../lib/types";
 import { Button, Card, EmptyState, Input, Modal, Notice, PageLoading, Select, Tabs, Textarea, useToast } from "../components/ui";
 import { AssetStatusBadge, GraphicCanvas, TypeIcon } from "../components/bits";
@@ -434,6 +434,7 @@ type Draft = { title: string; content: any; source?: { start: number; end: numbe
 function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft; setDraft: (d: Draft) => void; sermon: Sermon | null }) {
   const c = draft.content;
   const setC = (patch: Record<string, unknown>) => setDraft({ ...draft, content: { ...c, ...patch } });
+  const brandAccent = useChurch().church?.brand?.accent;
 
   if (asset.type === "video") {
     const src = draft.source || { start: 0, end: 0 };
@@ -510,14 +511,27 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
           <Input label="Scripture reference" value={c.scripture || ""} onChange={(e) => setC({ scripture: e.target.value })} />
         </div>
         <div>
-          <span className="label">Template</span>
-          <div className="grid grid-cols-5 gap-2">
-            {Object.entries(TEMPLATES).map(([id, t]) => (
-              <button key={id} type="button" onClick={() => setC({ template: id })} className={clsx("flex aspect-square items-center justify-center rounded-lg border-2 font-semibold tracking-tight text-lg", c.template === id ? "border-brand-500" : "border-transparent")} style={{ background: t.bg, color: t.fg }} aria-label={t.label} aria-pressed={c.template === id}>
-                “
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="label mb-0">Design</span>
+            {TEMPLATES[c.template]?.art && (
+              <button type="button" className="inline-flex items-center gap-1.5 text-xs font-medium text-fg hover:text-brand-600" onClick={() => setC({ artSeed: Math.floor(Math.random() * 1e9) })}>
+                <Shuffle className="h-3.5 w-3.5" />New variation
               </button>
-            ))}
+            )}
           </div>
+          {(["art", "plain"] as const).map((g) => (
+            <div key={g} className="mb-3">
+              <div className="mb-1.5 text-xs text-fg-muted">{g === "art" ? "Artwork" : "Plain"}</div>
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+                {Object.entries(TEMPLATES).filter(([, t]) => t.group === g).map(([id, t]) => (
+                  <button key={id} type="button" onClick={() => setC({ template: id })} className="group text-center" aria-label={t.label} aria-pressed={c.template === id}>
+                    <TemplateSwatch id={id} accent={brandAccent} selected={c.template === id} />
+                    <span className={clsx("mt-1 block truncate text-[0.6875rem]", c.template === id ? "font-semibold text-fg" : "text-fg-muted")}>{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Select label="Size" value={c.size} onChange={(e) => setC({ size: e.target.value })}>
@@ -632,4 +646,22 @@ function VersionMedia({ path }: { path: string }) {
   const { url } = useStorageUrl(path);
   if (!url) return null;
   return <a href={url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-medium text-fg underline underline-offset-2">Open this version's file</a>;
+}
+
+function TemplateSwatch({ id, accent, selected }: { id: string; accent?: string; selected: boolean }) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv) return;
+    cv.width = 160;
+    cv.height = 160;
+    const ctx = cv.getContext("2d")!;
+    const t = TEMPLATES[id];
+    drawBackground(ctx, 160, 160, id, t.accent === "#2ECBBE" && accent ? accent : t.accent, 7);
+    ctx.fillStyle = t.fg;
+    ctx.font = '700 64px "Archivo Variable", Archivo, sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillText("“", 80, 112);
+  }, [id, accent]);
+  return <canvas ref={ref} className={clsx("aspect-square w-full rounded-lg ring-1 ring-black/10 transition", selected ? "outline outline-2 outline-offset-2 outline-brand-500" : "group-hover:ring-black/30")} />;
 }

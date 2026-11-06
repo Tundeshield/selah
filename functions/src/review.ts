@@ -39,7 +39,8 @@ function sanitizeContent(type: string, current: DocumentData, patch: Record<stri
       break;
     case "graphic":
       for (const k of ["quote", "attribution", "sermonTitle", "scripture"]) pick(k, (v) => s(v, 600));
-      pick("template", (v) => (["cream", "forest", "sage", "gold-line", "photo-dark"].includes(String(v)) ? v : "cream"));
+      pick("template", (v) => (/^[a-z][a-z-]{1,23}$/.test(String(v)) ? v : "cream"));
+      pick("artSeed", (v) => (Number.isFinite(Number(v)) ? Math.abs(Math.floor(Number(v))) % 1e9 : 1));
       pick("align", (v) => (["left", "center"].includes(String(v)) ? v : "center"));
       pick("logoPosition", (v) => (["top", "bottom", "none"].includes(String(v)) ? v : "bottom"));
       pick("size", (v) => (["square", "portrait", "story", "landscape"].includes(String(v)) ? v : "square"));
