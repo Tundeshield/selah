@@ -1,0 +1,60 @@
+rules_version = '2';
+
+// Selah Studio — Cloud Storage security rules
+// All media lives under churches/{churchId}/... and is only accessible to
+// members of that church. Generated media is written by Cloud Functions only.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function memberDoc(churchId) {
+      return /databases/(default)/documents/churches/$(churchId)/members/$(request.auth.uid);
+    }
+
+    function isMember(churchId) {
+      return request.auth != null && firestore.exists(memberDoc(churchId));
+    }
+
+    function roleOf(churchId) {
+      return firestore.get(memberDoc(churchId)).data.role;
+    }
+
+    function canContribute(churchId) {
+      return isMember(churchId) && roleOf(churchId) in ['admin', 'editor', 'contributor'];
+    }
+
+    // Must match SUPPORTED_UPLOAD in web/src/lib/constants.ts
+    function isSermonMedia() {
+      return request.resource.contentType.matches('audio/(mpeg|mp3|mp4|x-m4a|m4a|aac|wav|x-wav|wave|webm|ogg|flac|x-flac)')
+          || request.resource.contentType.matches('video/(mp4|quicktime|webm|x-matroska)');
+    }
+
+    // Original sermon recordings: 2 GB limit.
+    match /churches/{churchId}/sermons/{sermonId}/{fileName} {
+      allow read: if isMember(churchId);
+      allow create: if canContribute(churchId)
+        && fileName.matches('original\\..+')
+        && request.resource.size < 2 * 1024 * 1024 * 1024
+        && isSermonMedia();
+      allow update, delete: if false;
+    }
+
+    // Church branding (logo): admins only, images up to 5 MB.
+    match /churches/{churchId}/branding/{fileName} {
+      allow read: if isMember(churchId);
+      allow write: if isMember(churchId) && roleOf(churchId) == 'admin'
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(png|jpeg|webp|svg\\+xml)');
+    }
+
+    // Generated media: read-only for members.
+    match /churches/{churchId}/assets/{rest=**} {
+      allow read: if isMember(churchId);
+      allow write: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

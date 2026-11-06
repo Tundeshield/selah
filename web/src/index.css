@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-font-smoothing: antialiased; }
+  body { @apply bg-cream text-charcoal font-sans; }
+  h1, h2, h3 { @apply text-forest; }
+  :focus-visible { @apply outline-none ring-2 ring-gold ring-offset-2 ring-offset-cream; }
+  ::selection { background: #DCE5D9; }
+}
+
+@layer components {
+  .h-page { @apply font-serif text-[1.9rem] leading-tight text-forest md:text-[2.25rem]; }
+  .h-section { @apply font-serif text-xl text-forest; }
+  .label { @apply mb-1.5 block text-sm font-medium text-forest; }
+  .hint { @apply mt-1 text-xs text-charcoal-400; }
+  .field {
+    @apply block w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-charcoal
+      placeholder:text-charcoal-400/70 focus:border-forest/40 focus:outline-none focus:ring-2 focus:ring-sage-300;
+  }
+  .card { @apply rounded-xl border border-cream-300/80 bg-white shadow-card; }
+  .link { @apply font-medium text-forest underline decoration-gold/60 underline-offset-4 hover:decoration-gold; }
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #E4DDCD; border-radius: 99px; }
+
+input[type="range"] { accent-color: #20342C; }
+input[type="checkbox"], input[type="radio"] { accent-color: #20342C; }

@@ -1,0 +1,145 @@
+rules_version = '2';
+
+// Selah Studio — Firestore security rules
+//
+// Principles
+// - Every church-owned record lives under churches/{churchId}/... and is only
+//   readable by members of that church.
+// - Anything that changes review status, publication state, versions, audit
+//   history or membership is written ONLY by Cloud Functions (Admin SDK),
+//   which enforce the approval workflow server-side. Clients can never mark
+//   content approved or published directly.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function memberPath(churchId) {
+      return /databases/$(database)/documents/churches/$(churchId)/members/$(request.auth.uid);
+    }
+
+    function isMember(churchId) {
+      return signedIn() && exists(memberPath(churchId));
+    }
+
+    function roleRank(role) {
+      return role == 'admin' ? 3 : (role == 'editor' ? 2 : (role == 'contributor' ? 1 : 0));
+    }
+
+    function hasRole(churchId, minRole) {
+      return isMember(churchId) &&
+        roleRank(get(memberPath(churchId)).data.role) >= roleRank(minRole);
+    }
+
+    function onlyChanges(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    // ---------- Users ----------
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      // Users may update their own display name and which of their churches is active.
+      allow update: if signedIn() && request.auth.uid == uid
+        && onlyChanges(['name', 'activeChurchId', 'updatedAt'])
+        && (!('activeChurchId' in request.resource.data)
+            || request.resource.data.activeChurchId in resource.data.churchIds);
+      // Profile documents are created by the ensureUserProfile function.
+      allow create, delete: if false;
+    }
+
+    // ---------- Churches ----------
+    match /churches/{churchId} {
+      allow read: if isMember(churchId);
+      allow create, delete: if false; // createChurch function
+      allow update: if hasRole(churchId, 'admin')
+        && onlyChanges(['name', 'logoPath', 'logoUrl', 'pastor', 'website', 'country',
+                        'contact', 'brand', 'content', 'approval', 'onboarding', 'updatedAt']);
+
+      match /members/{memberId} {
+        allow read: if isMember(churchId);
+        allow write: if false; // invite/accept/remove functions
+      }
+
+      // Invitations: admins list them; invitees see theirs via ensureUserProfile.
+      match /invites/{inviteId} {
+        allow read: if hasRole(churchId, 'admin');
+        allow write: if false;
+      }
+
+      // ---------- Sermons ----------
+      match /sermons/{sermonId} {
+        allow read: if isMember(churchId);
+
+        // A contributor registers a sermon before uploading its recording.
+        allow create: if hasRole(churchId, 'contributor')
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.status == 'uploading'
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 200;
+
+        // Metadata edits only. Processing state is owned by functions.
+        allow update: if hasRole(churchId, 'contributor')
+          && onlyChanges(['title', 'preacher', 'serviceDate', 'scripture', 'description',
+                          'media', 'updatedAt', 'uploadError'])
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['media'])
+              || resource.data.status == 'uploading');
+
+        allow delete: if false; // deleteSermon function (cascades assets)
+      }
+
+      // ---------- Transcripts ----------
+      match /transcripts/{sermonId} {
+        allow read: if isMember(churchId);
+        // Transcript corrections by the team.
+        allow update: if hasRole(churchId, 'contributor')
+          && onlyChanges(['segments', 'updatedAt', 'editedBy', 'searchText']);
+        allow create, delete: if false;
+      }
+
+      // ---------- Assets, versions, revisions ----------
+      match /assets/{assetId} {
+        allow read: if isMember(churchId);
+        allow write: if false; // updateAsset / review functions
+
+        match /versions/{versionId} {
+          allow read: if isMember(churchId);
+          allow write: if false;
+        }
+        match /revisions/{revisionId} {
+          allow read: if isMember(churchId);
+          allow write: if false;
+        }
+      }
+
+      // ---------- Publications ----------
+      match /publications/{publicationId} {
+        allow read: if isMember(churchId);
+        allow write: if false; // schedule / publish functions
+      }
+
+      // ---------- Notifications ----------
+      match /notifications/{notificationId} {
+        allow read: if isMember(churchId) && resource.data.userId == request.auth.uid;
+        allow update: if isMember(churchId) && resource.data.userId == request.auth.uid
+          && onlyChanges(['read', 'readAt']);
+        allow delete: if isMember(churchId) && resource.data.userId == request.auth.uid;
+        allow create: if false;
+      }
+
+      // ---------- Audit ----------
+      match /auditEvents/{eventId} {
+        allow read: if hasRole(churchId, 'admin');
+        allow write: if false;
+      }
+    }
+
+    // Deny everything else.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

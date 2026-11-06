@@ -1,0 +1,550 @@
+import { useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { ref, uploadBytesResumable } from "firebase/storage";
+import clsx from "clsx";
+import { ArrowLeft, CheckCircle2, Circle, Download, Loader2, Pencil, RotateCcw, Sparkles, Trash2, XCircle, LayoutGrid, Search, Quote, FileText, MinusCircle, UploadCloud } from "lucide-react";
+import { useChurch } from "../context/ChurchContext";
+import { db, storage } from "../lib/firebase";
+import { useDocData, useStorageUrl } from "../lib/hooks";
+import { api } from "../lib/api";
+import { CONTENT_TYPE_OPTIONS, STAGE_LABELS, EXT_MIME } from "../lib/constants";
+import { errMessage, fmtBytes, fmtClock, fmtDuration, fmtServiceDate } from "../lib/format";
+import { parseTranscript } from "../lib/transcriptImport";
+import type { Segment, Sermon, StageName, Transcript } from "../lib/types";
+import { Button, Card, Checkbox, EmptyState, Input, Modal, Notice, PageLoading, Tabs, Textarea, useToast } from "../components/ui";
+import { SermonStatusBadge } from "../components/bits";
+import { AssetCard } from "../components/AssetCard";
+
+type Tab = "overview" | "transcript" | "summary" | "content" | "history";
+const STAGES: StageName[] = ["probe", "transcribe", "analyse", "generate", "render"];
+
+export default function SermonWorkspace() {
+  const { sermonId = "" } = useParams();
+  const { churchId, assets, can } = useChurch();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const sermonQ = useDocData<Sermon>(`churches/${churchId}/sermons/${sermonId}`);
+  const transcriptQ = useDocData<Transcript>(`churches/${churchId}/transcripts/${sermonId}`);
+  const sermon = sermonQ.data;
+  const mediaUrl = useStorageUrl(sermon?.media?.path && sermon.status !== "uploading" ? sermon.media.path : null);
+  const [tab, setTab] = useState<Tab>("overview");
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const playerRef = useRef<HTMLVideoElement & HTMLAudioElement>(null);
+  const sermonAssets = useMemo(() => assets.filter((a) => a.sermonId === sermonId), [assets, sermonId]);
+
+  if (sermonQ.loading) return <PageLoading />;
+  if (!sermon) {
+    return (
+      <EmptyState title="Sermon not found" action={<Button onClick={() => navigate("/sermons")}>Back to sermons</Button>}>
+        It may have been deleted, or you may not have access to it.
+      </EmptyState>
+    );
+  }
+
+  const processing = ["queued", "processing"].includes(sermon.status);
+  const stopped = ["failed", "needs_configuration"].includes(sermon.status);
+
+  async function run(key: string, fn: () => Promise<unknown>, ok?: string) {
+    setBusy(key);
+    try {
+      await fn();
+      if (ok) toast(ok);
+    } catch (e) {
+      toast(errMessage(e), "error");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function seek(t: number) {
+    if (playerRef.current) {
+      playerRef.current.currentTime = t;
+      playerRef.current.play().catch(() => undefined);
+      setTab("overview");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  const isVideo = sermon.media?.hasVideo ?? sermon.media?.kind === "video";
+
+  return (
+    <>
+      <Link to="/sermons" className="mb-5 inline-flex items-center gap-1.5 text-sm text-charcoal-500 hover:text-forest"><ArrowLeft className="h-4 w-4" /> Sermons</Link>
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="mb-2"><SermonStatusBadge status={sermon.status} /></div>
+          <h1 className="h-page">{sermon.title}</h1>
+          <p className="mt-2 text-sm text-charcoal-500">
+            {sermon.preacher || "—"} · {fmtServiceDate(sermon.serviceDate)} · {fmtDuration(sermon.durationSec)}
+            {sermon.scripture ? ` · ${sermon.scripture}` : ""}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {can("contributor") && <Button variant="secondary" size="sm" icon={<Pencil className="h-4 w-4" />} onClick={() => setEditOpen(true)}>Edit details</Button>}
+          {sermonAssets.length > 0 && <Button variant="secondary" size="sm" icon={<LayoutGrid className="h-4 w-4" />} onClick={() => navigate(`/studio?sermon=${sermon.id}`)}>Open in Content Studio</Button>}
+          {can("contributor") && ["ready", "published"].includes(sermon.status) && <Button variant="secondary" size="sm" icon={<Sparkles className="h-4 w-4" />} onClick={() => setMoreOpen(true)}>Generate more</Button>}
+          {mediaUrl.url && <a href={mediaUrl.url} download={sermon.media?.fileName} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-2 rounded-lg border border-cream-300 bg-white px-3 text-[13px] font-medium text-forest hover:bg-sage-50"><Download className="h-4 w-4" />Original</a>}
+          {can("editor") && <Button variant="ghost" size="sm" icon={<Trash2 className="h-4 w-4" />} onClick={() => setDeleteOpen(true)} aria-label="Delete sermon">Delete</Button>}
+        </div>
+      </div>
+
+      {sermon.status === "uploading" && <ResumeUpload sermon={sermon} churchId={churchId} />}
+
+      {stopped && (
+        <div className="mb-6">
+          <Notice
+            tone={sermon.status === "failed" ? "error" : "warn"}
+            title={sermon.status === "failed" ? "Processing stopped" : "An integration needs setting up"}
+            action={can("contributor") && <Button size="sm" icon={<RotateCcw className="h-4 w-4" />} loading={busy === "retry"} onClick={() => run("retry", () => api.retryProcessing({ churchId, sermonId }), "Processing restarted")}>Retry</Button>}
+          >
+            {sermon.processing?.error || "Something went wrong while processing this sermon."}
+            {sermon.processing?.failedStage === "transcribe" && can("contributor") && <ImportTranscriptInline churchId={churchId} sermonId={sermonId} />}
+          </Notice>
+        </div>
+      )}
+
+      <Tabs
+        className="mb-6"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: "overview", label: "Overview" },
+          { id: "transcript", label: "Transcript" },
+          { id: "summary", label: "Summary" },
+          { id: "content", label: "Generated content", count: sermonAssets.length },
+          { id: "history", label: "Processing history" },
+        ]}
+      />
+
+      <div className={clsx(tab !== "overview" && "hidden")}>
+        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+          <Card className="overflow-hidden">
+            {mediaUrl.url ? (
+              isVideo ? (
+                <video ref={playerRef} src={mediaUrl.url} controls preload="metadata" className="aspect-video w-full bg-forest-900" />
+              ) : (
+                <div className="bg-forest p-6"><audio ref={playerRef} src={mediaUrl.url} controls preload="metadata" className="w-full" /></div>
+              )
+            ) : (
+              <div className="flex aspect-video items-center justify-center bg-forest text-sm text-sage-200">{sermon.status === "uploading" ? "Recording not uploaded yet" : "Loading recording…"}</div>
+            )}
+            <div className="grid grid-cols-2 gap-4 p-5 text-sm sm:grid-cols-4">
+              <div><div className="text-xs text-charcoal-400">Preacher</div><div className="font-medium text-forest">{sermon.preacher || "—"}</div></div>
+              <div><div className="text-xs text-charcoal-400">Service date</div><div className="font-medium text-forest">{fmtServiceDate(sermon.serviceDate)}</div></div>
+              <div><div className="text-xs text-charcoal-400">Duration</div><div className="font-medium text-forest">{fmtDuration(sermon.durationSec)}</div></div>
+              <div><div className="text-xs text-charcoal-400">File</div><div className="truncate font-medium text-forest">{sermon.media?.size ? fmtBytes(sermon.media.size) : "—"}</div></div>
+            </div>
+            {sermon.description && <p className="border-t border-cream-200 px-5 py-4 text-sm text-charcoal-500">{sermon.description}</p>}
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="h-section mb-4">Processing</h2>
+            <ol className="space-y-3">
+              {STAGES.map((st) => {
+                const s = sermon.processing?.stages?.[st];
+                const status = s?.status || (sermon.status === "uploading" ? "pending" : "pending");
+                return (
+                  <li key={st} className="flex items-start gap-3">
+                    {status === "done" ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-sage-500" /> : status === "running" ? <Loader2 className="mt-0.5 h-5 w-5 animate-spin text-forest" /> : status === "failed" ? <XCircle className="mt-0.5 h-5 w-5 text-[#B5544A]" /> : status === "skipped" ? <MinusCircle className="mt-0.5 h-5 w-5 text-cream-300" /> : <Circle className="mt-0.5 h-5 w-5 text-cream-300" />}
+                    <div className="min-w-0">
+                      <div className={clsx("text-sm font-medium", status === "pending" ? "text-charcoal-400" : "text-forest")}>{STAGE_LABELS[st]}</div>
+                      {st === "render" && status === "running" && !!sermon.processing?.pendingRenders && <div className="text-xs text-charcoal-500">{sermon.processing.pendingRenders} remaining</div>}
+                      {s?.error && <div className="text-xs text-[#9A3B30]">{s.error}</div>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+            {processing && <p className="mt-5 rounded-lg bg-sage-50 px-3 py-2 text-xs text-forest">You can leave this page. We'll notify you when content is ready.</p>}
+            {sermon.status === "ready" && sermonAssets.length > 0 && (
+              <Button className="mt-5 w-full" onClick={() => navigate(`/studio?sermon=${sermon.id}&status=needs_review`)}>Review content</Button>
+            )}
+          </Card>
+        </div>
+      </div>
+
+      {tab === "transcript" && <TranscriptPanel churchId={churchId} sermon={sermon} transcript={transcriptQ.data} loading={transcriptQ.loading} onSeek={seek} canEdit={can("contributor")} />}
+      {tab === "summary" && <SummaryPanel sermon={sermon} onSeek={seek} />}
+      {tab === "content" && (
+        sermonAssets.length ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{sermonAssets.map((a) => <AssetCard key={a.id} asset={a} />)}</div>
+        ) : (
+          <EmptyState title="No content yet">{processing ? "Content will appear here as it is generated." : "Nothing has been generated from this sermon yet."}</EmptyState>
+        )
+      )}
+      {tab === "history" && (
+        <Card className="divide-y divide-cream-200">
+          {(sermon.processing?.history || []).length === 0 ? (
+            <p className="p-5 text-sm text-charcoal-500">No processing activity yet.</p>
+          ) : (
+            [...(sermon.processing?.history || [])].reverse().map((h, i) => (
+              <div key={i} className="flex gap-3 px-5 py-3 text-sm">
+                <span className={clsx("mt-1.5 h-2 w-2 shrink-0 rounded-full", h.level === "error" ? "bg-[#B5544A]" : "bg-sage-500")} />
+                <div className="min-w-0 flex-1 text-charcoal">{h.message}</div>
+                <time className="shrink-0 text-xs text-charcoal-400">{new Date(h.at).toLocaleString()}</time>
+              </div>
+            ))
+          )}
+        </Card>
+      )}
+
+      <EditSermonModal open={editOpen} onClose={() => setEditOpen(false)} sermon={sermon} churchId={churchId} />
+      <GenerateMoreModal open={moreOpen} onClose={() => setMoreOpen(false)} churchId={churchId} sermonId={sermonId} />
+      <Modal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="Delete this sermon?"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button
+              variant="danger"
+              loading={busy === "delete"}
+              onClick={() =>
+                run("delete", async () => {
+                  await api.deleteSermon({ churchId, sermonId });
+                  navigate("/sermons", { replace: true });
+                }, "Sermon deleted")
+              }
+            >
+              Delete sermon
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-charcoal">This permanently deletes “{sermon.title}”, its original recording and transcript.</p>
+        {sermonAssets.length > 0 && (
+          <Notice tone="warn">
+            {sermonAssets.length} generated asset{sermonAssets.length === 1 ? "" : "s"} — including any scheduled or published records — will also be deleted. Content already posted on other platforms is not affected.
+          </Notice>
+        )}
+      </Modal>
+    </>
+  );
+}
+
+function ResumeUpload({ sermon, churchId }: { sermon: Sermon; churchId: string }) {
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  async function go(file?: File | null) {
+    if (!file) return;
+    setError(null);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const contentType = EXT_MIME[ext] || file.type;
+    if (!EXT_MIME[ext]) return setError("That file type isn't supported.");
+    const path = `churches/${churchId}/sermons/${sermon.id}/original.${ext}`;
+    try {
+      const task = uploadBytesResumable(ref(storage, path), file, { contentType });
+      await new Promise<void>((res, rej) => task.on("state_changed", (s) => setProgress(s.bytesTransferred / s.totalBytes), rej, () => res()));
+      await updateDoc(doc(db, "churches", churchId, "sermons", sermon.id), {
+        media: { path, fileName: file.name, contentType, size: file.size, kind: contentType.startsWith("video") ? "video" : "audio" },
+        uploadError: null,
+        updatedAt: serverTimestamp(),
+      });
+      await api.startProcessing({ churchId, sermonId: sermon.id });
+    } catch (e) {
+      setError(errMessage(e));
+      setProgress(null);
+    }
+  }
+  return (
+    <div className="mb-6">
+      <Notice
+        tone="warn"
+        title="The recording hasn't finished uploading"
+        action={
+          <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg bg-forest px-3 text-[13px] font-medium text-cream">
+            <UploadCloud className="h-4 w-4" /> {progress !== null ? `${Math.round(progress * 100)}%` : "Upload recording"}
+            <input type="file" className="sr-only" accept="audio/*,video/*" onChange={(e) => go(e.target.files?.[0])} disabled={progress !== null} />
+          </label>
+        }
+      >
+        {error || sermon.uploadError || "Choose the recording again to finish the upload and start processing."}
+      </Notice>
+    </div>
+  );
+}
+
+function ImportTranscriptInline({ churchId, sermonId }: { churchId: string; sermonId: string }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  return (
+    <label className="mt-2 inline-flex cursor-pointer items-center gap-1.5 font-medium underline underline-offset-4">
+      <FileText className="h-4 w-4" /> {busy ? "Importing…" : "Import a transcript file instead (.txt, .srt, .vtt)"}
+      <input
+        type="file"
+        accept=".txt,.srt,.vtt"
+        className="sr-only"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          setBusy(true);
+          try {
+            const parsed = parseTranscript(f.name, await f.text());
+            await api.importTranscript({ churchId, sermonId, segments: parsed.segments, hasTimestamps: parsed.hasTimestamps });
+            await api.retryProcessing({ churchId, sermonId });
+            toast("Transcript imported — processing continues");
+          } catch (err) {
+            toast(errMessage(err), "error");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+    </label>
+  );
+}
+
+function TranscriptPanel({ churchId, sermon, transcript, loading, onSeek, canEdit }: { churchId: string; sermon: Sermon; transcript: (Transcript & { id: string }) | null; loading: boolean; onSeek: (t: number) => void; canEdit: boolean }) {
+  const [q, setQ] = useState("");
+  const [editing, setEditing] = useState<number | null>(null);
+  const [draft, setDraft] = useState("");
+  const [quoteFor, setQuoteFor] = useState<Segment | null>(null);
+  const toast = useToast();
+  const navigate = useNavigate();
+  if (loading) return <PageLoading />;
+  if (!transcript) return <EmptyState title="No transcript yet">{["queued", "processing"].includes(sermon.status) ? "The transcript will appear here once transcription finishes." : "This sermon doesn't have a transcript."}</EmptyState>;
+  const term = q.trim().toLowerCase();
+  const segs = term ? transcript.segments.filter((s) => s.text.toLowerCase().includes(term)) : transcript.segments;
+
+  async function save(i: number) {
+    const segments = transcript!.segments.map((s) => (s.i === i ? { ...s, text: draft.trim() } : s));
+    try {
+      await updateDoc(doc(db, "churches", churchId, "transcripts", sermon.id), {
+        segments,
+        searchText: segments.map((s) => s.text).join(" ").toLowerCase().slice(0, 600000),
+        updatedAt: serverTimestamp(),
+      });
+      setEditing(null);
+      toast("Transcript corrected");
+    } catch (e) {
+      toast(errMessage(e), "error");
+    }
+  }
+
+  const highlight = (text: string) => {
+    if (!term) return text;
+    const parts = text.split(new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "ig"));
+    return parts.map((p, k) => (p.toLowerCase() === term ? <mark key={k} className="rounded bg-gold-100 px-0.5 text-forest">{p}</mark> : p));
+  };
+
+  return (
+    <Card>
+      <div className="flex flex-col gap-3 border-b border-cream-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative sm:w-80">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal-400" />
+          <input className="field pl-9" placeholder="Search within transcript" aria-label="Search within transcript" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <p className="text-xs text-charcoal-400">
+          {term ? `${segs.length} matching segment${segs.length === 1 ? "" : "s"}` : `${transcript.segments.length} segments`} · {transcript.source === "import" ? "Imported transcript" : "Automatic transcript"}
+          {!transcript.hasTimestamps && " · no timestamps"}
+        </p>
+      </div>
+      <ol className="max-h-[70vh] divide-y divide-cream-100 overflow-y-auto">
+        {segs.map((s) => (
+          <li key={s.i} className="group flex gap-4 px-4 py-3 hover:bg-cream-50">
+            {transcript.hasTimestamps ? (
+              <button onClick={() => onSeek(s.start)} className="w-14 shrink-0 pt-0.5 text-left font-mono text-xs text-sage-700 hover:text-forest hover:underline" aria-label={`Play from ${fmtClock(s.start)}`}>{fmtDuration(s.start)}</button>
+            ) : (
+              <span className="w-14 shrink-0 pt-0.5 font-mono text-xs text-charcoal-400">#{s.i + 1}</span>
+            )}
+            <div className="min-w-0 flex-1">
+              {editing === s.i ? (
+                <div className="space-y-2">
+                  <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} aria-label="Edit transcript segment" />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => save(s.i)} disabled={!draft.trim()}>Save correction</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[15px] leading-relaxed text-charcoal">{highlight(s.text)}</p>
+              )}
+            </div>
+            {canEdit && editing !== s.i && (
+              <div className="flex shrink-0 gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                <button className="rounded p-1.5 text-charcoal-400 hover:bg-sage-100 hover:text-forest" onClick={() => { setEditing(s.i); setDraft(s.text); }} aria-label="Correct this segment" title="Correct transcript"><Pencil className="h-4 w-4" /></button>
+                <button className="rounded p-1.5 text-charcoal-400 hover:bg-sage-100 hover:text-forest" onClick={() => setQuoteFor(s)} aria-label="Create quote graphic" title="Create quote graphic"><Quote className="h-4 w-4" /></button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+      {quoteFor && (
+        <QuoteFromSegment
+          segment={quoteFor}
+          onClose={() => setQuoteFor(null)}
+          onCreate={async (text) => {
+            const r = await api.createQuoteGraphic({ churchId, sermonId: sermon.id, text, segment: quoteFor.i });
+            setQuoteFor(null);
+            toast("Draft quote graphic created");
+            navigate(`/studio/${r.assetId}`);
+          }}
+        />
+      )}
+    </Card>
+  );
+}
+
+function QuoteFromSegment({ segment, onClose, onCreate }: { segment: Segment; onClose: () => void; onCreate: (t: string) => Promise<void> }) {
+  const [text, setText] = useState(segment.text);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Create a quote graphic"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button loading={busy} onClick={async () => { setBusy(true); setErr(null); try { await onCreate(text); } catch (e) { setErr(errMessage(e)); } finally { setBusy(false); } }}>Create draft</Button>
+        </>
+      }
+    >
+      <Textarea label="Quote" value={text} onChange={(e) => setText(e.target.value)} rows={4} hint="Trim to the words you want — quotes must match the transcript word-for-word." />
+      {err && <div className="mt-3"><Notice tone="error">{err}</Notice></div>}
+    </Modal>
+  );
+}
+
+function SummaryPanel({ sermon, onSeek }: { sermon: Sermon; onSeek: (t: number) => void }) {
+  const s = sermon.summary;
+  if (!s) return <EmptyState title="No summary yet">The sermon summary appears after the message has been analysed.</EmptyState>;
+  const Section = ({ title, items }: { title: string; items?: string[] }) =>
+    items?.length ? (
+      <div>
+        <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">{title}</h3>
+        <ul className="space-y-1.5">{items.map((x, i) => <li key={i} className="flex gap-2 text-[15px] leading-relaxed text-charcoal"><span className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-gold" />{x}</li>)}</ul>
+      </div>
+    ) : null;
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <Card className="space-y-6 p-6">
+        <div>
+          <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Main theme</h3>
+          <p className="font-serif text-2xl leading-snug text-forest">{s.mainTheme}</p>
+        </div>
+        <Section title="Key points" items={s.keyPoints} />
+        <Section title="Practical applications" items={s.practicalApplications} />
+        <Section title="Illustrations" items={s.illustrations} />
+        {s.conclusion && <div><h3 className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Conclusion</h3><p className="text-[15px] leading-relaxed text-charcoal">{s.conclusion}</p></div>}
+      </Card>
+      <div className="space-y-6">
+        <Card className="p-5">
+          <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Scripture references</h3>
+          {sermon.scriptureReferences?.length ? (
+            <ul className="space-y-2.5">
+              {sermon.scriptureReferences.map((r, i) => (
+                <li key={i} className="text-sm">
+                  <div className="flex items-center gap-2 font-medium text-forest">{r.reference}{!r.verified && <span className="rounded bg-gold-100 px-1.5 text-[11px] font-medium text-gold-700">check</span>}</div>
+                  <div className="text-xs text-charcoal-500">{r.context}</div>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-sm text-charcoal-500">No scripture references were identified.</p>}
+        </Card>
+        <Card className="p-5">
+          <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-charcoal-400">Important statements</h3>
+          {s.importantStatements?.length ? (
+            <ul className="space-y-3">
+              {s.importantStatements.map((x, i) => (
+                <li key={i} className="border-l-2 border-gold pl-3 text-sm italic leading-relaxed text-charcoal">
+                  “{x.text}”
+                  {x.start !== null && <button onClick={() => onSeek(x.start!)} className="ml-1 font-mono text-xs not-italic text-sage-700 hover:underline">{fmtDuration(x.start)}</button>}
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-sm text-charcoal-500">None identified.</p>}
+        </Card>
+        {!!s.uncertainties?.length && (
+          <Notice tone="warn" title="Parts of the transcript were unclear">
+            <ul className="mt-1 list-disc space-y-1 pl-4">{s.uncertainties.map((u, i) => <li key={i}>{u.note}{u.start !== null ? ` (${fmtDuration(u.start)})` : ""}</li>)}</ul>
+          </Notice>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EditSermonModal({ open, onClose, sermon, churchId }: { open: boolean; onClose: () => void; sermon: Sermon; churchId: string }) {
+  const [m, setM] = useState({ title: sermon.title, preacher: sermon.preacher || "", serviceDate: sermon.serviceDate, scripture: sermon.scripture || "", description: sermon.description || "" });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const toast = useToast();
+  async function save() {
+    if (!m.title.trim()) return setErr("Title is required.");
+    setBusy(true);
+    try {
+      await updateDoc(doc(db, "churches", churchId, "sermons", sermon.id), { ...m, title: m.title.trim(), updatedAt: serverTimestamp() });
+      toast("Sermon details saved");
+      onClose();
+    } catch (e) {
+      setErr(errMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal open={open} onClose={onClose} title="Edit sermon details" footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={save} loading={busy}>Save</Button></>}>
+      <div className="space-y-4">
+        {err && <Notice tone="error">{err}</Notice>}
+        <Input label="Title" value={m.title} onChange={(e) => setM({ ...m, title: e.target.value })} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input label="Preacher" value={m.preacher} onChange={(e) => setM({ ...m, preacher: e.target.value })} />
+          <Input label="Service date" type="date" value={m.serviceDate} onChange={(e) => setM({ ...m, serviceDate: e.target.value })} />
+        </div>
+        <Input label="Scripture reference" value={m.scripture} onChange={(e) => setM({ ...m, scripture: e.target.value })} />
+        <Textarea label="Description" value={m.description} onChange={(e) => setM({ ...m, description: e.target.value })} rows={3} />
+        <p className="text-xs text-charcoal-400">Changes apply to the sermon record. Content already generated keeps its current text until you edit it.</p>
+      </div>
+    </Modal>
+  );
+}
+
+function GenerateMoreModal({ open, onClose, churchId, sermonId }: { open: boolean; onClose: () => void; churchId: string; sermonId: string }) {
+  const [types, setTypes] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+  const opts = CONTENT_TYPE_OPTIONS.filter((c) => c.id !== "audio");
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Generate additional content"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button
+            loading={busy}
+            disabled={!types.length}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await api.generateMoreContent({ churchId, sermonId, types });
+                toast("Generating — we'll notify you when it's ready");
+                onClose();
+                setTypes([]);
+              } catch (e) {
+                toast(errMessage(e), "error");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Generate
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-4 text-sm text-charcoal-500">New content is added alongside what you already have and goes to review.</p>
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        {opts.map((o) => <Checkbox key={o.id} checked={types.includes(o.id)} onChange={(v) => setTypes(v ? [...types, o.id] : types.filter((t) => t !== o.id))} label={o.label} />)}
+      </div>
+    </Modal>
+  );
+}
