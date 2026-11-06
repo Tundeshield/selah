@@ -6,6 +6,7 @@ import { saveVersion } from "./lib/assets";
 import type { Segment, StageName } from "./lib/types";
 import { STAGES } from "./lib/types";
 import { enqueue } from "./pipeline/queue";
+import { finalizeSermon } from "./pipeline/tasks";
 import { verifyQuote, windowText } from "./pipeline/integrity";
 
 const opts = { region: REGION };
@@ -255,4 +256,27 @@ export const retryRender = onCall(opts, async (req) => {
   await ref.update({ status: "processing", "render.status": "pending", "render.error": null });
   await enqueue("renderAssetTask", { churchId: m.churchId, assetId, reason: "retry" });
   return { ok: true };
+});
+
+/** Stop waiting for unfinished clips: remove them and mark the sermon ready with what's done. */
+export const skipRemainingRenders = onCall(opts, async (req) => {
+  const d = (req.data || {}) as Record<string, unknown>;
+  const m = await requireMember(req, d.churchId, "contributor");
+  const sermonId = str(d.sermonId, "Sermon");
+  const ref = sermonRef(m.churchId, sermonId);
+  const s = (await ref.get()).data();
+  if (!s) throw new HttpsError("not-found", "Sermon not found.");
+  const pending = await churchRef(m.churchId).collection("assets").where("sermonId", "==", sermonId).where("status", "==", "processing").get();
+  const initial = pending.docs.filter((x) => !x.get("approvedVersion") && Number(x.get("version") || 1) === 1);
+  for (const a of initial) {
+    await db.recursiveDelete(a.ref);
+    await bucket().deleteFiles({ prefix: `churches/${m.churchId}/assets/${a.id}/` }).catch(() => undefined);
+  }
+  await ref.update({
+    "processing.pendingRenders": 0,
+    "processing.history": FieldValue.arrayUnion({ at: new Date().toISOString(), level: "info", message: `${m.name} skipped ${initial.length} unfinished clip${initial.length === 1 ? "" : "s"}.` }),
+  });
+  if (["processing", "queued"].includes(s.status)) await finalizeSermon(m.churchId, sermonId);
+  await audit(m.churchId, m.uid, { type: "sermon", id: sermonId }, "sermon.renders_skipped", null, { removed: initial.length });
+  return { ok: true, removed: initial.length };
 });

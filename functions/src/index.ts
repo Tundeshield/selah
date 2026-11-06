@@ -9,7 +9,7 @@ export {
 } from "./church";
 export {
   startProcessing, retryProcessing, importTranscript, generateMoreContent, deleteSermon,
-  createQuoteGraphic, retryRender,
+  createQuoteGraphic, retryRender, skipRemainingRenders,
 } from "./sermons";
 export { updateAsset, submitForReview, approveAssets, requestChanges, deleteAsset } from "./review";
 export {

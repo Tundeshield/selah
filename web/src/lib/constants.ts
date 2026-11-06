@@ -106,3 +106,9 @@ export const CONTENT_TYPE_OPTIONS = [
   { id: "captions", label: "Social captions" },
   { id: "audio", label: "Podcast audio" },
 ];
+
+/** Clips cut from audio-only sermons are audiograms (captioned waveform videos). */
+export function assetTypeLabel(a: { type: AssetType; fromAudio?: boolean }) {
+  if (a.type === "video" && a.fromAudio) return "Audiogram";
+  return ASSET_TYPE[a.type]?.label || a.type;
+}

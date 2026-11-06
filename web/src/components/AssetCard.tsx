@@ -2,9 +2,8 @@ import { Link } from "react-router-dom";
 import clsx from "clsx";
 import { AlertTriangle } from "lucide-react";
 import type { Asset } from "../lib/types";
-import { ASSET_TYPE } from "../lib/constants";
 import { fmtRelative } from "../lib/format";
-import { AssetStatusBadge, AssetThumb, TypeIcon } from "./bits";
+import { AssetStatusBadge, AssetThumb, TypeIcon, useAssetTypeLabel } from "./bits";
 
 export function primaryActionLabel(a: Asset) {
   switch (a.status) {
@@ -28,6 +27,7 @@ export function primaryActionLabel(a: Asset) {
 }
 
 export function AssetCard({ asset, selectable, selected, onSelect }: { asset: Asset; selectable?: boolean; selected?: boolean; onSelect?: (v: boolean) => void }) {
+  const typeLabel = useAssetTypeLabel(asset);
   const aspect = asset.category === "video" ? "aspect-[4/5]" : asset.category === "graphic" ? "aspect-square" : "aspect-[4/3]";
   return (
     <div className={clsx("card group relative flex flex-col overflow-hidden transition-colors hover:border-gray-300", selected && "ring-2 ring-brand-500")}>
@@ -41,7 +41,7 @@ export function AssetCard({ asset, selectable, selected, onSelect }: { asset: As
         <div className="flex flex-1 flex-col p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-xs font-medium text-fg-muted">
-              <TypeIcon type={asset.type} className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{ASSET_TYPE[asset.type]?.label}</span>
+              <TypeIcon type={asset.type} className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{typeLabel}</span>
             </span>
             <AssetStatusBadge asset={asset} />
           </div>

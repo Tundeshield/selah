@@ -101,9 +101,9 @@ export default function SermonWorkspace() {
           <Notice
             tone="warn"
             title="Rendering is taking longer than expected"
-            action={<Button size="sm" icon={<RotateCcw className="h-4 w-4" />} loading={busy === "resume"} onClick={() => run("resume", () => api.retryProcessing({ churchId, sermonId }), "Rendering resumed")}>Resume rendering</Button>}
+            action={<div className="flex flex-wrap gap-2"><Button size="sm" icon={<RotateCcw className="h-4 w-4" />} loading={busy === "resume"} onClick={() => run("resume", () => api.retryProcessing({ churchId, sermonId }), "Rendering resumed")}>Resume rendering</Button><Button size="sm" variant="secondary" loading={busy === "skip"} onClick={() => run("skip", () => api.skipRemainingRenders({ churchId, sermonId }), "Remaining clips skipped")}>Skip remaining clips</Button></div>}
           >
-            Some clips seem to have stalled. Resume to pick up where it left off — finished clips are kept.
+            Some clips seem to have stalled. Resume to pick up where it left off, or skip the unfinished clips — finished clips are kept either way.
           </Notice>
         </div>
       )}
@@ -166,7 +166,12 @@ export default function SermonWorkspace() {
                     {status === "done" ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-gray-500" /> : status === "running" ? <Loader2 className="mt-0.5 h-5 w-5 animate-spin text-fg" /> : status === "failed" ? <XCircle className="mt-0.5 h-5 w-5 text-red-500" /> : status === "skipped" ? <MinusCircle className="mt-0.5 h-5 w-5 text-gray-300" /> : <Circle className="mt-0.5 h-5 w-5 text-gray-300" />}
                     <div className="min-w-0">
                       <div className={clsx("text-sm font-medium", status === "pending" ? "text-gray-500" : "text-fg")}>{STAGE_LABELS[st]}</div>
-                      {st === "render" && status === "running" && !!sermon.processing?.pendingRenders && <div className="text-xs text-fg-muted">{sermon.processing.pendingRenders} remaining</div>}
+                      {st === "render" && status === "running" && !!sermon.processing?.pendingRenders && (
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
+                          {sermon.processing.pendingRenders} remaining
+                          {can("contributor") && <button type="button" className="font-medium text-fg underline underline-offset-2 hover:text-brand-600 disabled:opacity-50" disabled={busy === "skip"} onClick={() => run("skip", () => api.skipRemainingRenders({ churchId, sermonId }), "Remaining clips skipped")}>Skip the rest</button>}
+                        </div>
+                      )}
                       {s?.error && <div className="text-xs text-red-600">{s.error}</div>}
                     </div>
                   </li>

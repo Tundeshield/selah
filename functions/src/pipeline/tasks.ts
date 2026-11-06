@@ -356,6 +356,7 @@ async function stageGenerate(churchId: string, sermonId: string, church: ChurchD
             logoPosition: (brand.logoPlacement as LogoPosition) || "top-right",
           },
           durationSec: Math.round(w.end - w.start),
+          fromAudio: !sermon.media?.hasVideo, // audiogram: captioned waveform video
           media: null,
           render: { status: "pending" },
           flags: [],
@@ -476,7 +477,7 @@ function extractRefs(text: string): string[] {
   return [...out];
 }
 
-async function finalizeSermon(churchId: string, sermonId: string) {
+export async function finalizeSermon(churchId: string, sermonId: string) {
   const sRef = sermonRef(churchId, sermonId);
   const assets = await churchRef(churchId).collection("assets").where("sermonId", "==", sermonId).get();
   const counts = { total: 0, video: 0, graphic: 0, written: 0, audio: 0, needsReview: 0, renderFailed: 0 };

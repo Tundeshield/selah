@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { Link } from "react-router-dom";
 import { Film, Image as ImageIcon, FileText, Mic, Loader2, AlertTriangle } from "lucide-react";
 import { Badge } from "./ui";
-import { ASSET_STATUS, ASSET_TYPE, SERMON_STATUS } from "../lib/constants";
+import { ASSET_STATUS, ASSET_TYPE, SERMON_STATUS, assetTypeLabel } from "../lib/constants";
 import type { Asset, AssetStatus, SermonStatus } from "../lib/types";
 import { useStorageUrl } from "../lib/hooks";
 import { drawGraphic, GraphicSettings, loadImage } from "../lib/graphic";
@@ -74,6 +74,7 @@ export function GraphicCanvas({ settings, className, canvasRef }: { settings: Gr
 /** Visual preview used in cards — never a generic file icon. */
 export function AssetThumb({ asset, className }: { asset: Asset; className?: string }) {
   const cat = asset.category;
+  const audiogram = useIsAudiogram(asset);
   if (cat === "video") {
     return (
       <div className={clsx("relative overflow-hidden bg-gray-900", className)}>
@@ -82,7 +83,7 @@ export function AssetThumb({ asset, className }: { asset: Asset; className?: str
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-white/80">
             {asset.render?.status === "failed" ? <AlertTriangle className="h-5 w-5 text-brand-500" /> : <Loader2 className="h-5 w-5 animate-spin text-brand-500" />}
-            <span className="line-clamp-3 text-xs">{asset.render?.status === "failed" ? "Rendering failed" : "Rendering clip…"}</span>
+            <span className="line-clamp-3 text-xs">{asset.render?.status === "failed" ? "Rendering failed" : audiogram ? "Rendering audiogram…" : "Rendering clip…"}</span>
           </div>
         )}
         {asset.durationSec ? <span className="absolute bottom-2 right-2 rounded bg-gray-950/80 px-1.5 py-0.5 text-[0.6875rem] font-medium text-white">{fmtDuration(asset.durationSec)}</span> : null}
@@ -116,7 +117,7 @@ export function AssetThumb({ asset, className }: { asset: Asset; className?: str
       : c.body || c.reflection || c.introduction || "";
   return (
     <div className={clsx("relative overflow-hidden bg-gray-50 p-4", className)}>
-      <div className="mb-1.5 text-[0.6875rem] font-medium uppercase tracking-wider text-brand-700">{ASSET_TYPE[asset.type].label}</div>
+      <div className="mb-1.5 text-[0.6875rem] font-medium uppercase tracking-wider text-brand-700">{assetTypeLabel(asset)}</div>
       <div className="font-semibold tracking-tight text-[1.0625rem] leading-snug text-fg line-clamp-2">{c.title || asset.title}</div>
       <p className="mt-2 text-[0.8125rem] leading-relaxed text-fg-muted line-clamp-4">{String(text || "")}</p>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-gray-50" />
@@ -139,4 +140,18 @@ export function Stat({ label, value, tone, href, icon }: { label: string; value:
   ) : (
     <div className="card p-4">{inner}</div>
   );
+}
+
+/** "Video clip", or "Audiogram" when the clip comes from an audio-only sermon. */
+export function useIsAudiogram(asset: Pick<Asset, "type" | "fromAudio" | "sermonId">) {
+  const { sermons } = useChurch();
+  if (asset.type !== "video") return false;
+  if (asset.fromAudio !== undefined) return asset.fromAudio;
+  const s = sermons.find((x) => x.id === asset.sermonId);
+  return !!s && (s.media?.hasVideo === false || (s.media?.hasVideo === undefined && s.media?.kind === "audio"));
+}
+
+export function useAssetTypeLabel(asset: Pick<Asset, "type" | "fromAudio" | "sermonId">) {
+  const audiogram = useIsAudiogram(asset);
+  return assetTypeLabel({ type: asset.type, fromAudio: audiogram });
 }

@@ -157,6 +157,7 @@ export interface Asset {
   durationSec?: number;
   media?: { path?: string; thumbnailPath?: string; captionsPath?: string; contentType?: string } | null;
   render?: { status: "pending" | "running" | "done" | "failed"; error?: string | null };
+  fromAudio?: boolean;
   flags?: Flag[];
   revisionError?: string | null;
   lastRevisionId?: string;

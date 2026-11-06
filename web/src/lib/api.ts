@@ -28,6 +28,7 @@ export const api = {
   deleteSermon: call<C & { sermonId: string }, { ok: true; deletedAssets: number }>("deleteSermon"),
   createQuoteGraphic: call<C & { sermonId: string; text: string; segment: number }, { assetId: string }>("createQuoteGraphic"),
   retryRender: call<C & { assetId: string }>("retryRender"),
+  skipRemainingRenders: call<C & { sermonId: string }, { ok: true; removed: number }>("skipRemainingRenders"),
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   updateAsset: call<C & { assetId: string; expectedVersion?: number; patch: { title?: string; content?: any; source?: { start: number; end: number } } }, { ok: true; version: number; reapprovalRequired?: boolean; rendering?: boolean; unchanged?: boolean }>("updateAsset"),

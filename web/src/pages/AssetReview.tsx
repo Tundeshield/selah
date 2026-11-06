@@ -7,7 +7,7 @@ import { useChurch } from "../context/ChurchContext";
 import { db } from "../lib/firebase";
 import { useDocData, useQueryData, useStorageUrl, useUnsavedWarning } from "../lib/hooks";
 import { api } from "../lib/api";
-import { ASSET_TYPE, platformLabel } from "../lib/constants";
+import { ASSET_TYPE, assetTypeLabel, platformLabel } from "../lib/constants";
 import { errMessage, fmtClock, fmtDuration, fmtRelative, tsDate } from "../lib/format";
 import { GRAPHIC_SIZES, TEMPLATES } from "../lib/graphic";
 import type { Asset, AssetVersion, Cue, Revision, Sermon } from "../lib/types";
@@ -63,6 +63,7 @@ export default function AssetReview() {
     return <EmptyState title="Asset not found" action={<Button onClick={() => navigate("/studio")}>Back to Content Studio</Button>}>It may have been deleted.</EmptyState>;
   }
 
+  const typeLabel = assetTypeLabel({ type: asset.type, fromAudio: asset.fromAudio ?? (asset.type === "video" && sermonQ.data ? sermonQ.data.media?.hasVideo === false || (sermonQ.data.media?.hasVideo === undefined && sermonQ.data.media?.kind === "audio") : false) });
   const approvedCurrent = asset.approvedVersion === asset.version && ["approved", "scheduled", "published", "failed"].includes(asset.status);
   const editable = !["processing", "changes_requested"].includes(asset.status) && can("contributor");
   const assetPubs = publications.filter((p) => p.assetId === asset.id);
@@ -103,7 +104,7 @@ export default function AssetReview() {
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-fg-muted">
-            <span className="inline-flex items-center gap-1.5"><TypeIcon type={asset.type} className="h-3.5 w-3.5" />{ASSET_TYPE[asset.type].label}</span>
+            <span className="inline-flex items-center gap-1.5"><TypeIcon type={asset.type} className="h-3.5 w-3.5" />{typeLabel}</span>
             <span>·</span><span>Version {asset.version}</span>
             <AssetStatusBadge asset={asset} />
           </div>
@@ -340,7 +341,7 @@ function Preview({ asset, draft, canvasRef, sermon }: { asset: Asset; draft: { t
         ) : (
           <div className={clsx("flex flex-col items-center justify-center gap-3 rounded-lg bg-gray-800 text-sm text-gray-300", ar === "16:9" ? "aspect-video w-full" : "aspect-[9/16] w-full max-w-[340px]")}>
             {asset.render?.status === "failed" ? <AlertTriangle className="h-6 w-6 text-brand-500" /> : <Loader2 className="h-6 w-6 animate-spin text-brand-500" />}
-            {asset.render?.status === "failed" ? "Rendering failed" : "Rendering clip…"}
+            {asset.render?.status === "failed" ? "Rendering failed" : asset.fromAudio ? "Rendering audiogram…" : "Rendering clip…"}
           </div>
         )}
       </Card>

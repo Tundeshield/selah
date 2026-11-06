@@ -8,6 +8,7 @@ import type { AssetFlag, Cue, Segment } from "./lib/types";
 import { enqueue } from "./pipeline/queue";
 import { verifyQuote, windowText } from "./pipeline/integrity";
 import { refreshStatuses } from "./publishing";
+import { finalizeSermon } from "./pipeline/tasks";
 
 const opts = { region: REGION };
 
@@ -290,12 +291,25 @@ export const deleteAsset = onCall(opts, async (req) => {
   const ref = assetRef(m.churchId, assetId);
   const a = (await ref.get()).data();
   if (!a) throw new HttpsError("not-found", "Asset not found.");
+  let finalize = false;
+  if (a.status === "processing" && !a.render?.counted) {
+    const sRef = sermonRef(m.churchId, a.sermonId);
+    const left = await db.runTransaction(async (tx) => {
+      const s = await tx.get(sRef);
+      const n = Number(s.get("processing.pendingRenders") || 0);
+      if (n <= 0) return -1;
+      tx.update(sRef, { "processing.pendingRenders": n - 1 });
+      return n - 1;
+    });
+    finalize = left === 0;
+  }
   const pubs = await churchRef(m.churchId).collection("publications").where("assetId", "==", assetId).get();
   const batch = db.batch();
   pubs.docs.forEach((p) => batch.delete(p.ref));
   await batch.commit();
   await db.recursiveDelete(ref);
   await bucket().deleteFiles({ prefix: `churches/${m.churchId}/assets/${assetId}/` }).catch(() => undefined);
+  if (finalize) await finalizeSermon(m.churchId, a.sermonId);
   await audit(m.churchId, m.uid, { type: "asset", id: assetId }, "asset.deleted", { title: a.title, type: a.type, status: a.status }, null);
   return { ok: true };
 });
