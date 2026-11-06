@@ -87,7 +87,7 @@ export default function SermonWorkspace() {
           {can("contributor") && <Button variant="secondary" size="sm" icon={<Pencil className="h-4 w-4" />} onClick={() => setEditOpen(true)}>Edit details</Button>}
           {sermonAssets.length > 0 && <Button variant="secondary" size="sm" icon={<LayoutGrid className="h-4 w-4" />} onClick={() => navigate(`/studio?sermon=${sermon.id}`)}>Open in Content Studio</Button>}
           {can("contributor") && ["ready", "published"].includes(sermon.status) && <Button variant="secondary" size="sm" icon={<Sparkles className="h-4 w-4" />} onClick={() => setMoreOpen(true)}>Generate more</Button>}
-          {mediaUrl.url && <a href={mediaUrl.url} download={sermon.media?.fileName} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-[13px] font-medium text-fg hover:bg-gray-50"><Download className="h-4 w-4" />Original</a>}
+          {mediaUrl.url && <a href={mediaUrl.url} download={sermon.media?.fileName} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-[0.8125rem] font-medium text-fg hover:bg-gray-50"><Download className="h-4 w-4" />Original</a>}
           {can("editor") && <Button variant="ghost" size="sm" icon={<Trash2 className="h-4 w-4" />} onClick={() => setDeleteOpen(true)} aria-label="Delete sermon">Delete</Button>}
         </div>
       </div>
@@ -257,7 +257,7 @@ function ResumeUpload({ sermon, churchId }: { sermon: Sermon; churchId: string }
         tone="warn"
         title="The recording hasn't finished uploading"
         action={
-          <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg bg-brand-500 px-3 text-[13px] font-medium text-white hover:bg-brand-600">
+          <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg bg-brand-500 px-3 text-[0.8125rem] font-medium text-white hover:bg-brand-600">
             <UploadCloud className="h-4 w-4" /> {progress !== null ? `${Math.round(progress * 100)}%` : "Upload recording"}
             <input type="file" className="sr-only" accept="audio/*,video/*" onChange={(e) => go(e.target.files?.[0])} disabled={progress !== null} />
           </label>
@@ -362,7 +362,7 @@ function TranscriptPanel({ churchId, sermon, transcript, loading, onSeek, canEdi
                   </div>
                 </div>
               ) : (
-                <p className="text-[15px] leading-relaxed text-gray-800">{highlight(s.text)}</p>
+                <p className="text-[0.9375rem] leading-relaxed text-gray-800">{highlight(s.text)}</p>
               )}
             </div>
             {canEdit && editing !== s.i && (
@@ -419,7 +419,7 @@ function SummaryPanel({ sermon, onSeek }: { sermon: Sermon; onSeek: (t: number) 
     items?.length ? (
       <div>
         <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">{title}</h3>
-        <ul className="space-y-1.5">{items.map((x, i) => <li key={i} className="flex gap-2 text-[15px] leading-relaxed text-gray-800"><span className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-brand-500" />{x}</li>)}</ul>
+        <ul className="space-y-1.5">{items.map((x, i) => <li key={i} className="flex gap-2 text-[0.9375rem] leading-relaxed text-gray-800"><span className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-brand-500" />{x}</li>)}</ul>
       </div>
     ) : null;
   return (
@@ -432,7 +432,7 @@ function SummaryPanel({ sermon, onSeek }: { sermon: Sermon; onSeek: (t: number) 
         <Section title="Key points" items={s.keyPoints} />
         <Section title="Practical applications" items={s.practicalApplications} />
         <Section title="Illustrations" items={s.illustrations} />
-        {s.conclusion && <div><h3 className="mb-2 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Conclusion</h3><p className="text-[15px] leading-relaxed text-gray-800">{s.conclusion}</p></div>}
+        {s.conclusion && <div><h3 className="mb-2 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Conclusion</h3><p className="text-[0.9375rem] leading-relaxed text-gray-800">{s.conclusion}</p></div>}
       </Card>
       <div className="space-y-6">
         <Card className="p-5">
@@ -441,7 +441,7 @@ function SummaryPanel({ sermon, onSeek }: { sermon: Sermon; onSeek: (t: number) 
             <ul className="space-y-2.5">
               {sermon.scriptureReferences.map((r, i) => (
                 <li key={i} className="text-sm">
-                  <div className="flex items-center gap-2 font-medium text-fg">{r.reference}{!r.verified && <span className="rounded bg-brand-100 px-1.5 text-[11px] font-medium text-brand-700">check</span>}</div>
+                  <div className="flex items-center gap-2 font-medium text-fg">{r.reference}{!r.verified && <span className="rounded bg-brand-100 px-1.5 text-[0.6875rem] font-medium text-brand-700">check</span>}</div>
                   <div className="text-xs text-fg-muted">{r.context}</div>
                 </li>
               ))}

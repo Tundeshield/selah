@@ -81,12 +81,12 @@ export default function Overview() {
         <section aria-labelledby="latest-h" className="mb-10">
           <h2 id="latest-h" className="mb-3 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">Latest sermon</h2>
           <Card className="overflow-hidden md:flex">
-            <div className="aspect-video border-b border-gray-200 bg-brand-50 md:aspect-auto md:w-[300px] md:shrink-0 md:border-b-0 md:border-r">
+            <div className="aspect-video bg-ink md:aspect-auto md:w-[18rem] md:shrink-0">
               <StorageImage
                 path={latest.thumbnailPath}
                 alt=""
                 className="h-full w-full object-cover"
-                fallback={<div className="flex h-full min-h-[160px] w-full items-center justify-center text-brand-500"><Mic2 className="h-10 w-10" /></div>}
+                fallback={<div className="flex h-full min-h-[10rem] w-full items-center justify-center bg-[radial-gradient(circle_at_50%_55%,rgb(var(--brand-500)/0.35),transparent_62%)] text-brand-300"><Mic2 className="h-10 w-10" /></div>}
               />
             </div>
             <div className="flex flex-1 flex-col gap-4 p-6">
@@ -107,11 +107,11 @@ export default function Overview() {
                 <div className="grid grid-cols-2 gap-4 sm:max-w-md">
                   <div>
                     <div className="text-2xl font-semibold text-fg">{latestAssets.length}</div>
-                    <div className="text-[13px] text-fg-muted">Generated assets</div>
+                    <div className="text-[0.8125rem] text-fg-muted">Generated assets</div>
                   </div>
                   <div>
                     <div className="text-2xl font-semibold text-fg">{reviewed}<span className="text-base font-normal text-gray-500"> / {latestAssets.length}</span></div>
-                    <div className="text-[13px] text-fg-muted">Reviewed</div>
+                    <div className="text-[0.8125rem] text-fg-muted">Reviewed</div>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-brand-500" style={{ width: `${(reviewed / Math.max(1, latestAssets.length)) * 100}%` }} /></div>
                   </div>
                 </div>
@@ -179,7 +179,7 @@ export default function Overview() {
                 return (
                   <Link key={p.id} to={`/studio/${p.assetId}`} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50">
                     <div className="w-12 shrink-0 text-center">
-                      <div className="text-[11px] font-medium uppercase text-brand-700">{format(d, "EEE")}</div>
+                      <div className="text-[0.6875rem] font-medium uppercase text-brand-700">{format(d, "EEE")}</div>
                       <div className="font-semibold tracking-tight text-xl leading-none text-fg">{format(d, "d")}</div>
                     </div>
                     <div className="min-w-0 flex-1">

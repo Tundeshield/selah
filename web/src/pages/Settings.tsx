@@ -13,8 +13,9 @@ import { TEMPLATES } from "../lib/graphic";
 import type { Church, Invite, Member } from "../lib/types";
 import { Button, Card, Checkbox, Input, Modal, Notice, PageHeader, PageLoading, Select, Tabs, useToast } from "../components/ui";
 import { StorageImage } from "../components/bits";
+import { TextSizeControl } from "../components/TextSizeControl";
 
-type Tab = "profile" | "identity" | "content" | "approval" | "team";
+type Tab = "profile" | "identity" | "content" | "approval" | "team" | "personal";
 
 export default function Settings() {
   const { church, can, loading } = useChurch();
@@ -24,7 +25,7 @@ export default function Settings() {
   return (
     <>
       <PageHeader title="Church Settings" subtitle="Your church's identity, preferences and team." />
-      {!admin && <div className="mb-5"><Notice tone="info">Only administrators can change church settings. You can view them here.</Notice></div>}
+      {!admin && tab !== "personal" && <div className="mb-5"><Notice tone="info">Only administrators can change church settings. You can view them here.</Notice></div>}
       <Tabs
         className="mb-6"
         value={tab}
@@ -35,6 +36,7 @@ export default function Settings() {
           { id: "content", label: "Content preferences" },
           { id: "approval", label: "Approvals" },
           { id: "team", label: "Team" },
+          { id: "personal", label: "Your preferences" },
         ]}
       />
       <div className="max-w-3xl">
@@ -43,6 +45,16 @@ export default function Settings() {
         {tab === "content" && <ContentTab church={church} disabled={!admin} />}
         {tab === "approval" && <ApprovalTab church={church} disabled={!admin} />}
         {tab === "team" && <TeamTab disabled={!admin} />}
+        {tab === "personal" && (
+          <Card className="space-y-4 p-6">
+            <div>
+              <h2 className="h-section">Text size</h2>
+              <p className="mt-1 text-[0.94rem] text-fg-muted">Choose what's comfortable to read. This changes text and controls throughout Selah Studio and is saved to your account, so it follows you to other devices.</p>
+            </div>
+            <TextSizeControl />
+            <p className="text-[0.8rem] text-fg-muted">You can also change it any time from your name at the bottom of the sidebar.</p>
+          </Card>
+        )}
       </div>
     </>
   );
@@ -152,7 +164,7 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
     <div>
       <label className="label">{label}</label>
       <div className="flex items-center gap-2">
-        <input type="color" value={HEX.test(value) ? value : "#18181B"} onChange={(e) => onChange(e.target.value)} className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 bg-white p-1" aria-label={`${label} picker`} />
+        <input type="color" value={HEX.test(value) ? value : "#0B0D0E"} onChange={(e) => onChange(e.target.value)} className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 bg-white p-1" aria-label={`${label} picker`} />
         <input className="field font-mono" value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} />
       </div>
     </div>
@@ -163,10 +175,10 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
   const { churchId } = useChurch();
   const b = church.brand || {};
   const f = useForm({
-    primary: b.primary || "#18181B",
-    secondary: b.secondary || "#F4F4F5",
-    accent: b.accent || "#418FAE",
-    font: b.font || "Outfit",
+    primary: b.primary || "#0B0D0E",
+    secondary: b.secondary || "#F4F4F1",
+    accent: b.accent || "#2ECBBE",
+    font: b.font || "Archivo",
     logoPlacement: b.logoPlacement || "top-right",
     captionStyle: b.captionStyle || "clean",
     graphicTemplate: b.graphicTemplate || "cream",
@@ -184,7 +196,7 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
         <p className="-mt-2 text-xs text-gray-500">The primary colour is the background for audio-only video clips; the accent highlights graphics and waveforms.</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Select label="Heading font" value={f.v.font} onChange={(e) => f.setV({ ...f.v, font: e.target.value })} hint="Used on quote graphics.">
-            <option>Outfit</option>
+            <option>Archivo</option>
             <option>Inter</option>
           </Select>
           <Select label="Default caption style" value={f.v.captionStyle} onChange={(e) => f.setV({ ...f.v, captionStyle: e.target.value })}>
@@ -213,7 +225,7 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
         onReset={f.reset}
         disabled={disabled}
         onSave={() => {
-          if (![f.v.primary, f.v.secondary, f.v.accent].every((c) => HEX.test(c))) return setErr("Colours must be hex values like #418FAE.");
+          if (![f.v.primary, f.v.secondary, f.v.accent].every((c) => HEX.test(c))) return setErr("Colours must be hex values like #2ECBBE.");
           setErr(null);
           save(() => updateChurch(churchId, { brand: f.v }), f.markSaved);
         }}

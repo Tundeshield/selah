@@ -113,23 +113,23 @@ export default function Sermons() {
                 const n = assets.filter((a) => a.sermonId === s.id).length;
                 return (
                   <Link key={s.id} to={`/sermons/${s.id}`} className="card group overflow-hidden transition-colors hover:border-gray-300">
-                    <div className="relative aspect-video bg-brand-50">
+                    <div className="relative aspect-video bg-ink">
                       <StorageImage
                         path={s.thumbnailPath}
                         alt=""
                         className="h-full w-full object-cover opacity-95 transition-opacity group-hover:opacity-100"
                         fallback={
-                          <div className="flex h-full w-full items-center justify-center bg-brand-50">
-                            {s.media?.kind === "video" ? <Film className="h-8 w-8 text-brand-500/80" /> : <Mic2 className="h-8 w-8 text-brand-500/80" />}
+                          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_60%,rgb(var(--brand-500)/0.35),transparent_60%)]">
+                            {s.media?.kind === "video" ? <Film className="h-8 w-8 text-brand-300" /> : <Mic2 className="h-8 w-8 text-brand-300" />}
                           </div>
                         }
                       />
                       <div className="absolute left-3 top-3"><SermonStatusBadge status={s.status} className="shadow-card" /></div>
-                      {s.durationSec ? <span className="absolute bottom-2 right-2 rounded bg-gray-950/80 px-1.5 py-0.5 text-[11px] font-medium text-white">{fmtDuration(s.durationSec)}</span> : null}
+                      {s.durationSec ? <span className="absolute bottom-2 right-2 rounded bg-gray-950/80 px-1.5 py-0.5 text-[0.6875rem] font-medium text-white">{fmtDuration(s.durationSec)}</span> : null}
                     </div>
                     <div className="p-4">
                       <h3 className="line-clamp-2 font-semibold tracking-tight text-lg leading-snug text-fg">{s.title}</h3>
-                      <p className="mt-1 text-[13px] text-fg-muted">{s.preacher || "—"} · {fmtServiceDate(s.serviceDate)}</p>
+                      <p className="mt-1 text-[0.8125rem] text-fg-muted">{s.preacher || "—"} · {fmtServiceDate(s.serviceDate)}</p>
                       {s._snippet && <p className="mt-2 line-clamp-2 rounded bg-brand-50 px-2 py-1 text-xs italic text-fg-muted">{s._snippet}</p>}
                       <p className="mt-3 text-xs text-gray-500">{n ? `${n} generated asset${n === 1 ? "" : "s"}` : s.scripture || "No content yet"}</p>
                     </div>

@@ -9,7 +9,7 @@ Selah Studio turns sermon recordings into reviewable, editable and publishable m
 | Layer | Technology |
 | --- | --- |
 | Web app | React 18 + Vite + TypeScript + Tailwind (`web/`) — hosted on **Netlify** |
-| Design system | Modelled on Chakra UI Pro: Outfit (self-hosted), zinc greys, one accent colour, small radii |
+| Design system | Selah identity: ink + warm paper neutrals, Selah teal accent, Archivo (expanded) display + Inter UI, ripple motif |
 | Auth | Firebase Authentication (email/password + Google) |
 | Database | Cloud Firestore — every church record lives under `churches/{churchId}/…` |
 | Media storage | Cloud Storage for Firebase |
@@ -107,9 +107,14 @@ To use the Firebase emulators set `VITE_USE_EMULATORS=true`, copy `functions/.se
 
 ## Design system
 
-The UI follows Chakra UI Pro's look: Outfit type, zinc greys (`#111111` text, `#52525b` muted, `#e4e4e7` borders, `#fcfcfc` page), a single accent and "sm" radii. Tokens live in `web/tailwind.config.js` and `web/src/index.css`.
+**Idea:** *Selah* is the pause in the Psalms — and one sermon ripples outward through the week. The mark is a pause sign (two bars, the second lit); the motif is concentric ripples.
 
-The accent is a CSS variable scale (`--brand-50` … `--brand-950`). Cyan is the default; switch to teal or blue by changing `data-accent` on `<html>` in `web/index.html`, or edit the values in `index.css` for any other colour.
+- **Colour:** ink `#0b0d0e`, warm paper neutrals (`#f4f4f1` canvas, white cards) and one accent, Selah teal (`#2ecbbe`; scale in `--brand-*` CSS variables in `web/src/index.css`). Ink is the primary action colour in the app; teal is for highlights and marketing CTAs.
+- **Type:** Archivo, expanded (`.font-wide`, `.display-xl`, `.display-lg`) for headlines and page titles; Inter for the interface. Both self-hosted.
+- **Shape:** soft radii (12px controls, 16–24px cards), pill tabs and badges.
+- **Accessibility:** every size is in `rem`. Each person picks Small / Default / Large / Extra large (sidebar → your name, or Settings → Your preferences); it applies instantly, is remembered on the device and synced to their account. Default is 17px.
+
+Tokens live in `web/tailwind.config.js` and `web/src/index.css`.
 
 ## Supported uploads
 

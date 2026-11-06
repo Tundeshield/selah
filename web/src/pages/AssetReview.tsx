@@ -200,7 +200,7 @@ export default function AssetReview() {
                   <h3 className="mb-1 text-xs font-medium uppercase tracking-[0.06em] text-gray-500">
                     Transcript excerpt {asset.source?.start !== undefined && `· ${fmtClock(asset.source.start)}–${fmtClock(asset.source.end)}`}
                   </h3>
-                  <blockquote className="border-l-2 border-brand-500 pl-3 text-[15px] leading-relaxed text-gray-800">{asset.transcriptExcerpt}</blockquote>
+                  <blockquote className="border-l-2 border-brand-500 pl-3 text-[0.9375rem] leading-relaxed text-gray-800">{asset.transcriptExcerpt}</blockquote>
                 </div>
               ) : (
                 <p className="text-sm text-fg-muted">This asset draws on the whole sermon. Open the sermon to read the full transcript.</p>
@@ -373,7 +373,7 @@ function WrittenPreview({ asset, c }: { asset: Asset; c: any }) {
             {Object.entries(c.platforms || {}).map(([p, t]) => (
               <div key={p} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                 <div className="mb-2 text-xs font-semibold text-fg">{platformLabel(p)}</div>
-                <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-gray-800">{String(t)}</p>
+                <p className="whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-gray-800">{String(t)}</p>
               </div>
             ))}
           </div>
@@ -383,7 +383,7 @@ function WrittenPreview({ asset, c }: { asset: Asset; c: any }) {
             {asset.type === "devotional" && (
               <>
                 <p className="mt-3 font-medium text-brand-700">{c.scripture}</p>
-                <p className="mt-5 whitespace-pre-wrap text-[16px] leading-[1.75] text-gray-800">{c.reflection}</p>
+                <p className="mt-5 whitespace-pre-wrap text-[1rem] leading-[1.75] text-gray-800">{c.reflection}</p>
                 <h3 className="mt-7 font-semibold tracking-tight text-xl text-fg">Apply it</h3>
                 <p className="mt-2 whitespace-pre-wrap leading-[1.75] text-gray-800">{c.application}</p>
                 <h3 className="mt-7 font-semibold tracking-tight text-xl text-fg">Prayer</h3>
@@ -392,8 +392,8 @@ function WrittenPreview({ asset, c }: { asset: Asset; c: any }) {
             )}
             {asset.type === "summary" && (
               <>
-                <p className="mt-3 text-[15px] font-medium text-fg">{c.mainTheme}</p>
-                <p className="mt-5 whitespace-pre-wrap text-[16px] leading-[1.75] text-gray-800">{c.body}</p>
+                <p className="mt-3 text-[0.9375rem] font-medium text-fg">{c.mainTheme}</p>
+                <p className="mt-5 whitespace-pre-wrap text-[1rem] leading-[1.75] text-gray-800">{c.body}</p>
                 <h3 className="mt-7 font-semibold tracking-tight text-xl text-fg">Key points</h3>
                 <ul className="mt-2 list-disc space-y-1.5 pl-5 text-gray-800">{(c.keyPoints || []).map((k: string, i: number) => <li key={i}>{k}</li>)}</ul>
                 {!!c.scriptureReferences?.length && <p className="mt-6 text-sm text-fg-muted">Scripture: {c.scriptureReferences.join(", ")}</p>}
@@ -401,7 +401,7 @@ function WrittenPreview({ asset, c }: { asset: Asset; c: any }) {
             )}
             {asset.type === "article" && (
               <>
-                <p className="mt-5 whitespace-pre-wrap text-[17px] leading-[1.75] text-gray-800">{c.introduction}</p>
+                <p className="mt-5 whitespace-pre-wrap text-[1.0625rem] leading-[1.75] text-gray-800">{c.introduction}</p>
                 {(c.sections || []).map((s: { heading: string; body: string }, i: number) => (
                   <section key={i}>
                     <h3 className="mt-8 font-semibold tracking-tight text-2xl text-fg">{s.heading}</h3>
@@ -479,7 +479,7 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
           <ol className="max-h-80 space-y-2 overflow-y-auto border-t border-gray-200 p-3">
             {(c.cues || []).map((cue: Cue, i: number) => (
               <li key={i} className="flex items-center gap-2">
-                <span className="w-12 shrink-0 font-mono text-[11px] text-gray-500">{fmtClock(cue.start)}</span>
+                <span className="w-12 shrink-0 font-mono text-[0.6875rem] text-gray-500">{fmtClock(cue.start)}</span>
                 <input
                   className="field py-1.5"
                   aria-label={`Caption at ${fmtClock(cue.start)}`}
@@ -597,8 +597,8 @@ function HistoryPanel({ versions, revisions, current }: { versions: AssetVersion
               <div className="flex items-center gap-2">
                 <History className="h-4 w-4 text-gray-500" />
                 <span className="text-sm font-semibold text-fg">Version {v.version}</span>
-                {v.version === current && <span className="rounded bg-gray-100 px-1.5 text-[11px] font-medium text-fg">Current</span>}
-                {v.approvedByName && <span className="rounded bg-brand-100 px-1.5 text-[11px] font-medium text-fg">Approved by {v.approvedByName}</span>}
+                {v.version === current && <span className="rounded bg-gray-100 px-1.5 text-[0.6875rem] font-medium text-fg">Current</span>}
+                {v.approvedByName && <span className="rounded bg-brand-100 px-1.5 text-[0.6875rem] font-medium text-fg">Approved by {v.approvedByName}</span>}
               </div>
               <time className="text-xs text-gray-500">{fmtRelative(v.createdAt)}</time>
             </div>

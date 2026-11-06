@@ -535,8 +535,8 @@ export const renderAssetTask = onTaskDispatched<RenderPayload>(taskOpts, async (
         cues: asset.content?.cues || [],
         logoFile,
         logoPosition: (asset.content?.logoPosition as LogoPosition) || "top-right",
-        background: church.brand?.primary || "#18181B",
-        accent: church.brand?.accent || "#418FAE",
+        background: church.brand?.primary || "#0B0D0E",
+        accent: church.brand?.accent || "#2ECBBE",
       });
       dirs.push(r.dir);
       await bucket().upload(r.videoFile, { destination: `${prefix}.mp4`, contentType: "video/mp4" });

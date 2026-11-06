@@ -4,6 +4,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { api } from "../lib/api";
 import type { UserProfile } from "../lib/types";
+import { applyTextSize, getTextSize, isTextSize } from "../lib/textSize";
 
 interface AuthState {
   user: User | null;
@@ -56,6 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         doc(db, "users", user.uid),
         (snap) => {
           setProfile(snap.exists() ? ({ uid: snap.id, ...snap.data() } as UserProfile) : null);
+          // Follow the person's saved text size across devices.
+          const ts = snap.get("textSize");
+          if (isTextSize(ts) && ts !== getTextSize()) applyTextSize(ts);
           setProfileLoading(false);
         },
         (e) => {

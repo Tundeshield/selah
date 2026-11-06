@@ -15,6 +15,7 @@ export interface UserProfile {
   email: string;
   churchIds: string[];
   activeChurchId: string | null;
+  textSize?: "small" | "default" | "large" | "xlarge";
 }
 
 export interface Church {

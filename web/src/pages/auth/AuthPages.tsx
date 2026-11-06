@@ -6,33 +6,43 @@ import { authError } from "../../lib/format";
 import { Button, Input, Notice } from "../../components/ui";
 import { Logo } from "../../components/bits";
 
+function AuthRipples() {
+  const rings = [0.3, 0.45, 0.6, 0.76, 0.93, 1.1];
+  const size = 1000;
+  return (
+    <div className="ripples [&>span]:!left-[50%] [&>span]:!top-[62%]" aria-hidden>
+      <span className="glow" style={{ width: size * 0.7, height: size * 0.7 }} />
+      {rings.map((r, i) => <span key={r} style={{ width: size * r, height: size * r, opacity: 1 - i * 0.13 }} />)}
+      <span className="pulse" style={{ width: size * 0.5, height: size * 0.5, borderColor: "rgb(var(--brand-300) / 0.5)" }} />
+    </div>
+  );
+}
+
 function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: ReactNode; footer: ReactNode }) {
   return (
-    <div className="grid min-h-screen bg-canvas lg:grid-cols-[1.1fr_1fr]">
-      <div className="hidden flex-col justify-between border-r border-gray-200 p-12 lg:flex">
-        <Link to="/" aria-label="Selah Studio home"><Logo /></Link>
-        <div className="max-w-xl">
-          <div className="mb-6 inline-flex items-center rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm text-gray-800">Sermon-to-media for churches</div>
-          <h1 className="text-[3.5rem] font-bold leading-[1.02] tracking-tightest text-fg xl:text-[4rem]">
+    <div className="grid min-h-screen bg-canvas lg:grid-cols-[1.05fr_1fr]">
+      <div className="relative hidden overflow-hidden bg-ink p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <AuthRipples />
+        <div className="relative"><Link to="/" aria-label="Selah Studio home"><Logo light /></Link></div>
+        <div className="relative max-w-xl">
+          <h1 className="display-xl text-[clamp(3rem,5vw,4.6rem)] text-white">
             One sermon.
             <br />
-            <span className="highlight mt-2 inline-block">A week of content</span>
+            <span className="bg-gradient-to-r from-white via-brand-200 to-brand-400 bg-clip-text text-transparent">A week of ministry.</span>
           </h1>
-          <p className="mt-8 max-w-md text-lg leading-relaxed text-fg-muted">
-            Your Sunday message deserves to reach beyond Sunday. Upload a recording, review what Selah Studio prepares, and share what you approve throughout the week.
+          <p className="mt-7 max-w-md text-[1.1rem] leading-relaxed text-white/65">
+            Upload a recording, review what Selah Studio prepares, and share what you approve throughout the week.
           </p>
         </div>
-        <p className="text-sm text-fg-muted">© {new Date().getFullYear()} Dove · Upload · Review · Approve · Share</p>
+        <p className="relative text-[0.85rem] text-white/45">© {new Date().getFullYear()} Dove</p>
       </div>
       <div className="flex items-center justify-center px-5 py-12">
-        <div className="w-full max-w-[400px]">
+        <div className="w-full max-w-[26rem]">
           <Link to="/" aria-label="Selah Studio home" className="mb-10 block lg:hidden"><Logo /></Link>
-          <div className="card p-7 sm:p-8">
-            <h2 className="text-2xl font-semibold tracking-tight text-fg">{title}</h2>
-            <p className="mt-1.5 text-[15px] text-fg-muted">{subtitle}</p>
-            <div className="mt-7">{children}</div>
-          </div>
-          <div className="mt-6 text-center text-sm text-fg-muted">{footer}</div>
+          <h2 className="h-page">{title}</h2>
+          <p className="mt-2 text-[1rem] text-fg-muted">{subtitle}</p>
+          <div className="mt-8">{children}</div>
+          <div className="mt-8 text-center text-[0.94rem] text-fg-muted">{footer}</div>
         </div>
       </div>
     </div>
@@ -97,7 +107,7 @@ export function SignIn() {
           <Link to="/reset-password" className="text-sm text-fg underline-offset-4 hover:underline">Forgot password?</Link>
         </div>
         <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!email || !password}>Sign in</Button>
-        <div className="flex items-center gap-3 py-1 text-sm text-gray-400"><span className="h-px flex-1 bg-gray-200" />or<span className="h-px flex-1 bg-gray-200" /></div>
+        <div className="flex items-center gap-3 py-1 text-[0.85rem] text-fg-subtle"><span className="h-px flex-1 bg-gray-300" />or<span className="h-px flex-1 bg-gray-300" /></div>
         <GoogleButton onError={setError} />
       </form>
     </AuthShell>
@@ -138,7 +148,7 @@ export function SignUp() {
         <Input label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} hint="If you were invited, use the email address the invitation was sent to." />
         <Input label="Password" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} hint="At least 8 characters." />
         <Button type="submit" size="lg" className="w-full" loading={busy}>Create account</Button>
-        <div className="flex items-center gap-3 py-1 text-sm text-gray-400"><span className="h-px flex-1 bg-gray-200" />or<span className="h-px flex-1 bg-gray-200" /></div>
+        <div className="flex items-center gap-3 py-1 text-[0.85rem] text-fg-subtle"><span className="h-px flex-1 bg-gray-300" />or<span className="h-px flex-1 bg-gray-300" /></div>
         <GoogleButton onError={setError} />
       </form>
     </AuthShell>

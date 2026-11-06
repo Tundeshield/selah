@@ -45,7 +45,7 @@ export function AssetCard({ asset, selectable, selected, onSelect }: { asset: As
             </span>
             <AssetStatusBadge asset={asset} />
           </div>
-          <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug text-fg">{asset.title}</h3>
+          <h3 className="line-clamp-2 text-[0.9375rem] font-semibold leading-snug text-fg">{asset.title}</h3>
           <p className="mt-1 truncate text-xs text-gray-500">{asset.sermonTitle}</p>
           <div className="mt-auto flex items-center justify-between pt-3 text-xs">
             <span className="truncate text-gray-500">Updated {fmtRelative(asset.updatedAt)}</span>

@@ -30,7 +30,7 @@ function SetupRequired() {
         <p className="mt-3 text-sm text-fg-muted">
           Selah Studio needs its Firebase project settings before it can run. Add these environment variables to your Netlify site (or <code className="rounded bg-gray-100 px-1">web/.env.local</code> for development), then redeploy:
         </p>
-        <ul className="mt-4 space-y-1 font-mono text-[13px] text-fg">{missingEnv.map((k) => <li key={k}>{k}</li>)}</ul>
+        <ul className="mt-4 space-y-1 font-mono text-[0.8125rem] text-fg">{missingEnv.map((k) => <li key={k}>{k}</li>)}</ul>
         <p className="mt-4 text-xs text-gray-500">See README.md → Setup for the full checklist.</p>
       </div>
     </div>

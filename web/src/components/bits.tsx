@@ -10,16 +10,25 @@ import { drawGraphic, GraphicSettings, loadImage } from "../lib/graphic";
 import { useChurch } from "../context/ChurchContext";
 import { fmtDuration } from "../lib/format";
 
+/** Selah mark: a pause — two bars, the second lit — inside an ink tile. */
+export function Mark({ className, size = 30 }: { className?: string; size?: number }) {
+  return (
+    <svg viewBox="0 0 40 40" width={size} height={size} className={className} aria-hidden>
+      <rect width="40" height="40" rx="11" fill="#0b0d0e" />
+      <rect x="12" y="11" width="5.5" height="18" rx="2.75" fill="#fff" />
+      <rect x="22.5" y="11" width="5.5" height="18" rx="2.75" fill="rgb(var(--brand-400))" />
+      <circle cx="20" cy="20" r="15.5" fill="none" stroke="rgb(var(--brand-400))" strokeOpacity=".35" strokeWidth="1" />
+    </svg>
+  );
+}
+
 export function Logo({ className, light }: { className?: string; light?: boolean }) {
   return (
-    <div className={clsx("flex items-center gap-2", className)}>
-      <svg viewBox="0 0 64 64" className="h-7 w-7" aria-hidden>
-        <rect width="64" height="64" rx="12" fill="rgb(var(--brand-500))" />
-        <path d="M19 39c6.5-1 10.5-4.2 13-9.5 2.5 5.3 6.5 8.5 13 9.5-5.5 2-9.5 5.3-13 11-3.5-5.7-7.5-9-13-11z" fill="#fff" />
-        <circle cx="32" cy="20" r="5" fill="#fff" />
-      </svg>
-      <span className={clsx("text-[22px] font-semibold leading-none tracking-tight", light ? "text-white" : "text-fg")}>selah</span>
-      <span className={clsx("rounded border px-1 py-px text-[10px] font-semibold uppercase leading-tight tracking-wide", light ? "border-white/60 text-white" : "border-brand-500 text-brand-600")}>Studio</span>
+    <div className={clsx("flex items-center gap-2.5", className)}>
+      <Mark />
+      <span className={clsx("font-wide text-[1.25rem] font-bold leading-none tracking-[-0.03em]", light ? "text-white" : "text-fg")} style={{ fontStretch: "118%" }}>
+        selah<span className={clsx("font-medium", light ? "text-white/55" : "text-fg-muted")}> studio</span>
+      </span>
     </div>
   );
 }
@@ -76,7 +85,7 @@ export function AssetThumb({ asset, className }: { asset: Asset; className?: str
             <span className="line-clamp-3 text-xs">{asset.render?.status === "failed" ? "Rendering failed" : "Rendering clip…"}</span>
           </div>
         )}
-        {asset.durationSec ? <span className="absolute bottom-2 right-2 rounded bg-gray-950/80 px-1.5 py-0.5 text-[11px] font-medium text-white">{fmtDuration(asset.durationSec)}</span> : null}
+        {asset.durationSec ? <span className="absolute bottom-2 right-2 rounded bg-gray-950/80 px-1.5 py-0.5 text-[0.6875rem] font-medium text-white">{fmtDuration(asset.durationSec)}</span> : null}
       </div>
     );
   }
@@ -107,9 +116,9 @@ export function AssetThumb({ asset, className }: { asset: Asset; className?: str
       : c.body || c.reflection || c.introduction || "";
   return (
     <div className={clsx("relative overflow-hidden bg-gray-50 p-4", className)}>
-      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-brand-700">{ASSET_TYPE[asset.type].label}</div>
-      <div className="font-semibold tracking-tight text-[17px] leading-snug text-fg line-clamp-2">{c.title || asset.title}</div>
-      <p className="mt-2 text-[13px] leading-relaxed text-fg-muted line-clamp-4">{String(text || "")}</p>
+      <div className="mb-1.5 text-[0.6875rem] font-medium uppercase tracking-wider text-brand-700">{ASSET_TYPE[asset.type].label}</div>
+      <div className="font-semibold tracking-tight text-[1.0625rem] leading-snug text-fg line-clamp-2">{c.title || asset.title}</div>
+      <p className="mt-2 text-[0.8125rem] leading-relaxed text-fg-muted line-clamp-4">{String(text || "")}</p>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-gray-50" />
     </div>
   );
@@ -120,7 +129,7 @@ export function Stat({ label, value, tone, href, icon }: { label: string; value:
     <div className="flex items-center justify-between gap-3">
       <div>
         <div className={clsx("text-2xl font-semibold tabular-nums", tone === "bad" && Number(value) > 0 ? "text-red-700" : "text-fg")}>{value}</div>
-        <div className="mt-0.5 text-[13px] text-fg-muted">{label}</div>
+        <div className="mt-0.5 text-[0.8125rem] text-fg-muted">{label}</div>
       </div>
       {icon && <div className="text-gray-500">{icon}</div>}
     </div>

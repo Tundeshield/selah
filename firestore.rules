@@ -43,7 +43,8 @@ service cloud.firestore {
       allow read: if signedIn() && request.auth.uid == uid;
       // Users may update their own display name and which of their churches is active.
       allow update: if signedIn() && request.auth.uid == uid
-        && onlyChanges(['name', 'activeChurchId', 'updatedAt'])
+        && onlyChanges(['name', 'activeChurchId', 'textSize', 'updatedAt'])
+        && (!('textSize' in request.resource.data) || request.resource.data.textSize in ['small', 'default', 'large', 'xlarge'])
         && (!('activeChurchId' in request.resource.data)
             || request.resource.data.activeChurchId in resource.data.churchIds);
       // Profile documents are created by the ensureUserProfile function.

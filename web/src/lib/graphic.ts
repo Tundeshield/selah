@@ -21,11 +21,11 @@ export const GRAPHIC_SIZES: Record<GraphicSettings["size"], { w: number; h: numb
 };
 
 export const TEMPLATES: Record<string, { label: string; bg: string; fg: string; accent: string; sub: string; rule?: boolean; frame?: boolean }> = {
-  cream: { label: "Light", bg: "#FFFFFF", fg: "#111111", accent: "#418FAE", sub: "#52525B" },
-  forest: { label: "Dark", bg: "#18181B", fg: "#FFFFFF", accent: "#8DD4E6", sub: "#A1A1AA" },
-  sage: { label: "Tint", bg: "#DFF9FD", fg: "#295B70", accent: "#418FAE", sub: "#2E6880" },
-  "gold-line": { label: "Frame", bg: "#FCFCFC", fg: "#111111", accent: "#418FAE", sub: "#52525B", frame: true },
-  "photo-dark": { label: "Accent", bg: "#418FAE", fg: "#FFFFFF", accent: "#DFF9FD", sub: "#DFF9FD", rule: true },
+  cream: { label: "Paper", bg: "#F4F4F1", fg: "#0B0D0E", accent: "#0D8D86", sub: "#57544F" },
+  forest: { label: "Ink", bg: "#0B0D0E", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#A8A59F" },
+  sage: { label: "Tint", bg: "#CCF7F0", fg: "#0B0D0E", accent: "#0F706B", sub: "#115A57" },
+  "gold-line": { label: "Frame", bg: "#FFFFFF", fg: "#0B0D0E", accent: "#2ECBBE", sub: "#57544F", frame: true },
+  "photo-dark": { label: "Glow", bg: "#2ECBBE", fg: "#0B0D0E", accent: "#0B0D0E", sub: "#052C2B", rule: true },
 };
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
@@ -53,15 +53,17 @@ export async function drawGraphic(
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ("fontStretch" in ctx) (ctx as any).fontStretch = "semi-expanded";
   try {
     await Promise.all([
-      document.fonts.load(`700 64px "Outfit Variable"`),
-      document.fonts.load(`500 28px "Outfit Variable"`),
+      document.fonts.load(`700 64px "Archivo Variable"`),
+      document.fonts.load(`500 28px "Inter Variable"`),
     ]);
   } catch {
     /* fonts optional */
   }
-  const accent = t.accent === "#418FAE" && opts.brandAccent ? opts.brandAccent : t.accent;
+  const accent = t.accent === "#2ECBBE" && opts.brandAccent ? opts.brandAccent : t.accent;
 
   ctx.fillStyle = t.bg;
   ctx.fillRect(0, 0, w, h);
@@ -75,7 +77,7 @@ export async function drawGraphic(
 
   // Quote mark
   ctx.fillStyle = accent;
-  ctx.font = `700 ${Math.round(w * 0.16)}px "Outfit Variable", Outfit, sans-serif`;
+  ctx.font = `700 ${Math.round(w * 0.16)}px "Archivo Variable", Archivo, sans-serif`;
   ctx.textAlign = s.align === "center" ? "center" : "left";
   const x = s.align === "center" ? w / 2 : pad;
 
@@ -86,7 +88,7 @@ export async function drawGraphic(
   const quote = `${s.quote.trim()}`;
   const maxH = h * (s.size === "story" ? 0.5 : 0.52);
   for (; size > 26; size -= 2) {
-    ctx.font = `600 ${size}px "Outfit Variable", Outfit, sans-serif`;
+    ctx.font = `600 ${size}px "Archivo Variable", Archivo, sans-serif`;
     lines = wrap(ctx, quote, maxW);
     if (lines.length * size * 1.22 <= maxH) break;
   }
@@ -97,11 +99,11 @@ export async function drawGraphic(
   if (s.logoPosition === "top") y += h * 0.04;
 
   ctx.fillStyle = accent;
-  ctx.font = `700 ${Math.round(size * 1.6)}px "Outfit Variable", Outfit, sans-serif`;
+  ctx.font = `700 ${Math.round(size * 1.6)}px "Archivo Variable", Archivo, sans-serif`;
   ctx.fillText("“", x, y - size * 0.45);
 
   ctx.fillStyle = t.fg;
-  ctx.font = `600 ${size}px "Outfit Variable", Outfit, sans-serif`;
+  ctx.font = `600 ${size}px "Archivo Variable", Archivo, sans-serif`;
   lines.forEach((l, i) => ctx.fillText(l, x, y + size * 0.55 + i * lineH));
 
   // Rule + attribution
@@ -111,10 +113,10 @@ export async function drawGraphic(
   ctx.fillRect(s.align === "center" ? w / 2 - ruleW / 2 : pad, fy, ruleW, 3);
   fy += size * 0.95;
   ctx.fillStyle = t.fg;
-  ctx.font = `600 ${Math.round(w * 0.026)}px "Outfit Variable", Outfit, sans-serif`;
+  ctx.font = `600 ${Math.round(w * 0.026)}px "Inter Variable", Inter, sans-serif`;
   if (s.attribution) ctx.fillText(s.attribution, x, fy);
   ctx.fillStyle = t.sub;
-  ctx.font = `400 ${Math.round(w * 0.022)}px "Outfit Variable", Outfit, sans-serif`;
+  ctx.font = `400 ${Math.round(w * 0.022)}px "Inter Variable", Inter, sans-serif`;
   const meta = [s.sermonTitle, s.scripture].filter(Boolean).join("  ·  ");
   if (meta) ctx.fillText(meta, x, fy + w * 0.038);
 
@@ -128,7 +130,7 @@ export async function drawGraphic(
       ctx.drawImage(opts.logo, lx, s.logoPosition === "top" ? ly - lh / 2 : ly - lh / 2, lw, lh);
     } else if (opts.churchName) {
       ctx.fillStyle = t.sub;
-      ctx.font = `600 ${Math.round(w * 0.02)}px "Outfit Variable", Outfit, sans-serif`;
+      ctx.font = `600 ${Math.round(w * 0.02)}px "Inter Variable", Inter, sans-serif`;
       ctx.fillText(opts.churchName.toUpperCase(), x, ly + w * 0.007);
     }
   }

@@ -66,15 +66,15 @@ export default function Calendar() {
           compact ? "px-1.5 py-1" : "px-2.5 py-2",
         )}
       >
-        <div className="flex items-center gap-1.5 text-[11px] font-medium text-fg-muted">
+        <div className="flex items-center gap-1.5 text-[0.6875rem] font-medium text-fg-muted">
           <TypeIcon type={p.assetType} className="h-3 w-3" />
           {format(tsDate(p.scheduledAt)!, "HH:mm")}
           {!compact && <span className="truncate">· {platformLabel(p.platform)}</span>}
         </div>
-        <div className={clsx("font-medium leading-snug text-fg", compact ? "truncate text-[11px]" : "line-clamp-3 text-[13px]")}>{p.assetTitle}</div>
+        <div className={clsx("font-medium leading-snug text-fg", compact ? "truncate text-[0.6875rem]" : "line-clamp-3 text-[0.8125rem]")}>{p.assetTitle}</div>
         {!compact && (
           <div className="mt-1">
-            <Badge tone={pubTone(p, held)} className="!px-1.5 !text-[10px]">
+            <Badge tone={pubTone(p, held)} className="!px-1.5 !text-[0.625rem]">
               {p.status === "published" ? "Published" : p.status === "failed" ? "Failed" : held ? "Needs re-approval" : due ? "Due · publish manually" : "Scheduled"}
             </Badge>
           </div>
@@ -111,7 +111,7 @@ export default function Calendar() {
               <div key={d.toISOString()} className={clsx("card flex min-h-[120px] flex-col p-3 md:min-h-[280px]", isToday(d) && "ring-2 ring-brand-500/60")}>
                 <div className="mb-2 flex items-baseline justify-between">
                   <div>
-                    <span className="text-[11px] font-medium uppercase tracking-wider text-gray-500">{format(d, "EEE")}</span>
+                    <span className="text-[0.6875rem] font-medium uppercase tracking-wider text-gray-500">{format(d, "EEE")}</span>
                     <span className="ml-1.5 font-semibold tracking-tight text-xl text-fg">{format(d, "d")}</span>
                   </div>
                   {canPublish && <button className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-fg" onClick={() => setScheduleOpen({ date: new Date(new Date(d).setHours(9, 0, 0, 0)) })} aria-label={`Schedule on ${format(d, "EEEE d MMMM")}`}><CalendarPlus className="h-4 w-4" /></button>}
@@ -126,7 +126,7 @@ export default function Calendar() {
 
       {view === "month" && (
         <Card className="overflow-hidden">
-          <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50 text-center text-[11px] font-medium uppercase tracking-wider text-gray-500">
+          <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50 text-center text-[0.6875rem] font-medium uppercase tracking-wider text-gray-500">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <div key={d} className="py-2">{d}</div>)}
           </div>
           <div className="grid grid-cols-7">
@@ -137,7 +137,7 @@ export default function Calendar() {
                   <div className={clsx("mb-1 text-xs", isToday(d) ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-white" : isSameMonth(d, cursor) ? "text-fg" : "text-gray-500/60")}>{format(d, "d")}</div>
                   <div className="space-y-1">
                     {items.slice(0, 3).map((p) => <Entry key={p.id} p={p} compact />)}
-                    {items.length > 3 && <button onClick={() => { setCursor(d); setParams({ view: "week" }); }} className="text-[11px] text-fg-muted hover:underline">+{items.length - 3} more</button>}
+                    {items.length > 3 && <button onClick={() => { setCursor(d); setParams({ view: "week" }); }} className="text-[0.6875rem] text-fg-muted hover:underline">+{items.length - 3} more</button>}
                   </div>
                 </div>
               );
@@ -157,9 +157,9 @@ export default function Calendar() {
               return (
                 <button key={p.id} onClick={() => setActive(p)} className="flex w-full items-center gap-4 px-5 py-3.5 text-left hover:bg-gray-50">
                   <div className="w-14 shrink-0 text-center">
-                    <div className="text-[11px] font-medium uppercase text-brand-700">{format(d, "EEE")}</div>
+                    <div className="text-[0.6875rem] font-medium uppercase text-brand-700">{format(d, "EEE")}</div>
                     <div className="font-semibold tracking-tight text-xl leading-none text-fg">{format(d, "d")}</div>
-                    <div className="text-[10px] text-gray-500">{format(d, "MMM")}</div>
+                    <div className="text-[0.625rem] text-gray-500">{format(d, "MMM")}</div>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-fg">{p.assetTitle}</div>
@@ -208,7 +208,7 @@ function PublicationModal({ publication: p, held, onClose }: { publication: Publ
         {p.caption && <div className="col-span-2"><dt className="text-xs text-gray-500">Caption</dt><dd className="mt-1 whitespace-pre-wrap rounded-lg bg-gray-50 p-3 text-gray-800">{p.caption}</dd></div>}
       </dl>
       <div className="mt-6 flex flex-wrap gap-2">
-        <Link to={`/studio/${p.assetId}`} className="inline-flex h-8 items-center rounded-lg border border-gray-200 bg-white px-3 text-[13px] font-medium text-fg hover:bg-gray-50">Open asset</Link>
+        <Link to={`/studio/${p.assetId}`} className="inline-flex h-8 items-center rounded-lg border border-gray-200 bg-white px-3 text-[0.8125rem] font-medium text-fg hover:bg-gray-50">Open asset</Link>
         {canPublish && p.status !== "published" && (
           <>
             <Button size="sm" variant="secondary" onClick={() => setMode("edit")}>{p.status === "failed" ? "Reschedule" : "Change date, time or caption"}</Button>

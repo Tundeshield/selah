@@ -3,77 +3,81 @@
 @tailwind utilities;
 
 /*
- * Accent colour. Cyan is the default; set data-accent="teal" or "blue" on
- * <html> (or edit these values) to switch. Values are "R G B".
+ * Selah teal — the single accent. Values are "R G B".
  */
-:root,
-[data-accent="cyan"] {
-  --brand-50: 239 252 254;
-  --brand-100: 223 249 253; /* #dff9fd tint */
-  --brand-200: 189 236 245;
-  --brand-300: 141 212 230;
-  --brand-400: 96 174 202;
-  --brand-500: 65 143 174; /* #418fae solid */
-  --brand-600: 54 123 151;
-  --brand-700: 46 104 128;
-  --brand-800: 41 91 112; /* #295b70 */
-  --brand-900: 33 72 89;
-  --brand-950: 21 49 61;
+:root {
+  --brand-50: 236 253 250;
+  --brand-100: 204 247 240;
+  --brand-200: 153 238 227;
+  --brand-300: 94 224 211;  /* glow */
+  --brand-400: 46 203 190;  /* signature — CTA on dark, highlights */
+  --brand-500: 21 175 164;
+  --brand-600: 13 141 134;
+  --brand-700: 15 112 107;
+  --brand-800: 17 90 87;
+  --brand-900: 18 74 72;
+  --brand-950: 5 44 43;
 }
-[data-accent="teal"] {
-  --brand-50: 240 253 249;
-  --brand-100: 221 250 243;
-  --brand-200: 186 238 226;
-  --brand-300: 137 212 196;
-  --brand-400: 96 177 165;
-  --brand-500: 67 146 136;
-  --brand-600: 56 125 117;
-  --brand-700: 48 106 99;
-  --brand-800: 41 92 86;
-  --brand-900: 33 74 69;
-  --brand-950: 20 50 47;
-}
-[data-accent="blue"] {
-  --brand-50: 241 246 254;
-  --brand-100: 228 237 252;
-  --brand-200: 201 218 250;
-  --brand-300: 156 185 244;
-  --brand-400: 97 136 236;
-  --brand-500: 54 98 227;
-  --brand-600: 44 80 200;
-  --brand-700: 37 67 172;
-  --brand-800: 33 60 160;
-  --brand-900: 30 52 130;
-  --brand-950: 20 34 84;
-}
+
+/*
+ * Text size — a per-person setting (see src/lib/textSize.ts). Everything in
+ * the UI is sized in rem, so changing the root size scales the whole app.
+ */
+html { font-size: 106.25%; }             /* default: 17px */
+html[data-text-size="small"] { font-size: 93.75%; }   /* 15px */
+html[data-text-size="large"] { font-size: 118.75%; }  /* 19px */
+html[data-text-size="xlarge"] { font-size: 131.25%; } /* 21px */
 
 @layer base {
   html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-  body { @apply bg-canvas font-sans text-[15px] text-fg; }
+  body { @apply bg-canvas font-sans text-base text-fg; font-feature-settings: "cv11", "ss01"; }
   h1, h2, h3 { @apply text-fg; }
-  :focus-visible { @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white; }
-  ::selection { background: rgb(var(--brand-100)); }
+  :focus-visible { @apply outline-none ring-2 ring-brand-400 ring-offset-2 ring-offset-white; }
+  ::selection { background: rgb(var(--brand-200)); color: #0b0d0e; }
 }
 
 @layer components {
-  .h-page { @apply text-[1.75rem] font-semibold leading-tight tracking-tight text-fg md:text-[2rem]; }
-  .h-section { @apply text-lg font-semibold tracking-tight text-fg; }
+  /* Display type: Archivo, expanded. Used for marketing headlines and page titles. */
+  .font-wide { font-family: "Archivo Variable", "Archivo", sans-serif; font-stretch: 125%; }
+  .display-xl { @apply font-wide font-bold uppercase leading-[0.92] tracking-[-0.02em]; }
+  .display-lg { @apply font-wide font-bold uppercase leading-[0.95] tracking-[-0.015em]; }
+
+  .h-page { @apply font-wide text-[1.75rem] font-semibold leading-tight tracking-[-0.02em] text-fg md:text-[2.1rem]; font-stretch: 112%; }
+  .h-section { @apply font-wide text-lg font-semibold tracking-[-0.01em] text-fg; font-stretch: 110%; }
   .label { @apply mb-1.5 block text-sm font-medium text-fg; }
-  .hint { @apply mt-1.5 text-xs text-fg-muted; }
+  .hint { @apply mt-1.5 text-[0.8rem] text-fg-muted; }
   .field {
-    @apply block h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-fg shadow-[0_1px_1px_rgba(24,24,27,0.03)]
-      placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500
-      disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500;
+    @apply block h-11 w-full rounded-lg border border-gray-300/80 bg-white px-3.5 text-[0.94rem] text-fg
+      placeholder:text-gray-400 focus:border-ink focus:outline-none focus:ring-2 focus:ring-brand-300/60
+      disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500;
   }
-  textarea.field { @apply h-auto py-2.5; }
-  .card { @apply rounded-xl border border-gray-200 bg-white shadow-card; }
-  .link { @apply font-medium text-fg underline decoration-gray-300 underline-offset-4 hover:decoration-fg; }
-  .eyebrow { @apply text-xs font-medium uppercase tracking-[0.08em] text-fg-muted; }
-  /* Chakra Pro's hero highlight: tinted box with a caret bar on the right */
-  .highlight { @apply rounded-sm border-r-2 border-brand-800 bg-brand-100 px-2 text-brand-800; }
+  textarea.field { @apply h-auto py-3 leading-relaxed; }
+  .card { @apply rounded-2xl border border-gray-200 bg-white shadow-card; }
+  .link { @apply font-medium text-fg underline decoration-brand-400 decoration-2 underline-offset-4 hover:decoration-brand-600; }
+  .eyebrow { @apply text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-fg-muted; }
+}
+
+/* Ripple motif — a message spreading outward through the week. */
+.ripples { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.ripples span {
+  position: absolute; left: 50%; top: 50%; border-radius: 9999px; transform: translate(-50%, -50%);
+  border: 1.5px solid rgb(var(--brand-300) / 0.28);
+}
+.ripples .glow {
+  border: 0;
+  background: radial-gradient(closest-side, rgb(var(--brand-400) / 0.35), rgb(var(--brand-500) / 0.10) 55%, transparent 72%);
+  filter: blur(6px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ripples .pulse { animation: ripple 9s ease-out infinite; }
+}
+@keyframes ripple {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
 }
 
 .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 99px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #d6d4cf; border-radius: 99px; }
 
-input[type="range"], input[type="checkbox"], input[type="radio"] { accent-color: rgb(var(--brand-500)); }
+input[type="range"], input[type="checkbox"], input[type="radio"] { accent-color: #0b0d0e; }
