@@ -13,7 +13,7 @@ Selah Studio turns sermon recordings into reviewable, editable and publishable m
 | Auth | Firebase Authentication (email/password + Google) |
 | Database | Cloud Firestore — every church record lives under `churches/{churchId}/…` |
 | Media storage | Cloud Storage for Firebase |
-| Backend | Cloud Functions for Firebase, 2nd gen, Node 20 (`functions/`) |
+| Backend | Cloud Functions for Firebase, 2nd gen, Node 22 (`functions/`) |
 | Async processing | Cloud Tasks queues (`onTaskDispatched`) — upload, then leave the page |
 | Transcription | Deepgram (pre-recorded API, word timestamps, diarisation) |
 | AI analysis & writing | Anthropic Claude (structured tool output) |
