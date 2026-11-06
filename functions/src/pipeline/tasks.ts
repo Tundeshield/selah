@@ -19,14 +19,29 @@ import { buildCues, fmtTime, verifyQuote, verifyScripture, windowText } from "./
 import { Aspect, buildVtt, CaptionStyle, cleanup, LogoPosition, probeMedia, renderClip, renderPodcastAudio, renderPoster } from "./render";
 import { enqueue } from "./queue";
 
+export const MAX_CLIPS = 4;
+
 const taskOpts = {
   region: REGION,
   secrets: [ANTHROPIC_API_KEY, DEEPGRAM_API_KEY],
   timeoutSeconds: 1800,
   memory: "2GiB" as const,
   cpu: 2,
+  concurrency: 1,
   retryConfig: { maxAttempts: 1 }, // failures are recorded and retried by the user
   rateLimits: { maxConcurrentDispatches: 6 },
+};
+// Rendering is memory-hungry (ffmpeg + temp files live in RAM on Cloud Run):
+// one render per instance, 4 GiB, and one automatic retry if an instance dies.
+const renderOpts = {
+  region: REGION,
+  secrets: [ANTHROPIC_API_KEY, DEEPGRAM_API_KEY],
+  timeoutSeconds: 1800,
+  memory: "4GiB" as const,
+  cpu: 2,
+  concurrency: 1,
+  retryConfig: { maxAttempts: 2, minBackoffSeconds: 30 },
+  rateLimits: { maxConcurrentDispatches: 4 },
 };
 
 export const DEFAULT_WRITTEN = ["summary", "devotional", "article", "captions"] as const;
@@ -203,7 +218,7 @@ async function stageAnalyse(churchId: string, sermonId: string, sermon: Document
   const { segments, hasTimestamps } = await loadTranscript(churchId, sermonId);
   const clipMin = church.content?.clipMin || 30;
   const clipMax = church.content?.clipMax || 90;
-  const a = await analyseSermon(church, sermon, segments, { clipMin, clipMax, hasTimestamps });
+  const a = await analyseSermon(church, sermon, segments, { clipMin, clipMax, hasTimestamps, maxClips: MAX_CLIPS });
 
   const scripture = a.scriptureReferences.map((r) => ({
     reference: r.reference,
@@ -307,7 +322,7 @@ async function stageGenerate(churchId: string, sermonId: string, church: ChurchD
       .map((x) => (x.type === "video" ? `- clip ${fmtTime(x.source?.start || 0)}–${fmtTime(x.source?.end || 0)}: ${x.title}` : `- quote: "${x.content?.quote}"`))
       .join("\n");
     const fresh = await analyseSermon(church, sermon, segments, {
-      clipMin: prefs.clipMin || 30, clipMax: prefs.clipMax || 90, hasTimestamps, maxClips: 4, maxQuotes: 4, avoid,
+      clipMin: prefs.clipMin || 30, clipMax: prefs.clipMax || 90, hasTimestamps, maxClips: MAX_CLIPS, maxQuotes: 4, avoid,
     });
     candidates = { clips: fresh.clips, quotes: fresh.quotes };
   }
@@ -318,7 +333,8 @@ async function stageGenerate(churchId: string, sermonId: string, church: ChurchD
   // --- Video clips ---
   if (wanted.has("video") && hasTimestamps) {
     const seen: { start: number; end: number }[] = [];
-    for (const c of (candidates.clips || []) as AnalysisResult["clips"]) {
+    for (const c of ((candidates.clips || []) as AnalysisResult["clips"]).slice(0, MAX_CLIPS * 2)) {
+      if (seen.length >= MAX_CLIPS) break;
       if (!Number.isInteger(c.startSegment) || !segments[c.startSegment]) continue;
       const w = clampClip(segments, c.startSegment, c.endSegment, Math.max(10, clipMin * 0.6), clipMax * 1.25);
       if (w.end - w.start < 8) continue;
@@ -506,7 +522,7 @@ interface RenderPayload {
   revisionId?: string;
 }
 
-export const renderAssetTask = onTaskDispatched<RenderPayload>(taskOpts, async (req) => {
+export const renderAssetTask = onTaskDispatched<RenderPayload>(renderOpts, async (req) => {
   const { churchId, assetId, reason } = req.data;
   const aRef = assetRef(churchId, assetId);
   const snap = await aRef.get();
@@ -581,17 +597,19 @@ export const renderAssetTask = onTaskDispatched<RenderPayload>(taskOpts, async (
     for (const d of dirs) await cleanup(d);
   }
 
-  if (reason === "initial") {
-    // Count down the sermon's pending renders; the last one finalises the sermon.
+  if (!asset.render?.counted && (reason === "initial" || reason === "retry")) {
+    // Count down the sermon's pending renders (once per asset); the last one finalises the sermon.
     const sRef = sermonRef(churchId, asset.sermonId);
     const remaining = await db.runTransaction(async (tx) => {
-      const s = await tx.get(sRef);
+      const [s, a] = await Promise.all([tx.get(sRef), tx.get(aRef)]);
+      if (a.get("render.counted")) return -1;
       const left = Math.max(0, Number(s.get("processing.pendingRenders") || 0) - 1);
       tx.update(sRef, { "processing.pendingRenders": left });
+      tx.update(aRef, { "render.counted": true });
       return left;
     });
     if (remaining === 0) await finalizeSermon(churchId, asset.sermonId);
-  } else {
+  } else if (reason !== "initial" && reason !== "retry") {
     const after = (await aRef.get()).data()!;
     await notify(churchId, {
       type: after.render?.status === "failed" ? "processing_failed" : "revision_ready",

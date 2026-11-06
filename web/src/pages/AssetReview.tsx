@@ -251,7 +251,7 @@ function ReviewActions(props: {
       {s === "needs_review" && props.canApprove && <Button icon={<Check className="h-4 w-4" />} loading={busy === "approve"} disabled={props.dirty} onClick={props.onApprove} title={props.dirty ? "Save your changes first" : undefined}>Approve</Button>}
       {["needs_review", "approved", "draft"].includes(s) && asset.type !== "audio" && <Button variant="secondary" icon={<MessageSquareWarning className="h-4 w-4" />} onClick={props.onChanges}>Request changes</Button>}
       {["needs_review", "draft"].includes(s) && asset.type !== "audio" && <Button variant="ghost" icon={<RefreshCw className="h-4 w-4" />} loading={busy === "regen"} onClick={props.onRegenerate}>Regenerate</Button>}
-      {asset.render?.status === "failed" && <Button icon={<RefreshCw className="h-4 w-4" />} loading={busy === "render"} onClick={props.onRetryRender}>Retry render</Button>}
+      {(asset.render?.status === "failed" || renderStalled(asset)) && <Button icon={<RefreshCw className="h-4 w-4" />} loading={busy === "render"} onClick={props.onRetryRender}>Retry render</Button>}
       {props.approvedCurrent && props.canPublish && (
         <>
           <Button icon={<CalendarPlus className="h-4 w-4" />} onClick={props.onSchedule}>Schedule</Button>
@@ -261,6 +261,12 @@ function ReviewActions(props: {
       <DownloadButton asset={asset} canvasRef={props.canvasRef} />
     </div>
   );
+}
+
+function renderStalled(a: Asset) {
+  const r = a.render as (Asset["render"] & { startedAt?: { toMillis?: () => number } }) | undefined;
+  const t = r?.startedAt?.toMillis?.() ?? a.updatedAt?.toMillis?.() ?? 0;
+  return a.status === "processing" && !!r && ["pending", "running"].includes(r.status) && t > 0 && Date.now() - t > 15 * 60 * 1000;
 }
 
 function slug(s: string) {

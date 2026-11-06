@@ -12,6 +12,7 @@ const opts = { region: REGION };
 
 export const SUPPORTED_TYPES = /^(audio\/(mpeg|mp3|mp4|x-m4a|m4a|aac|wav|x-wav|wave|webm|ogg|flac|x-flac)|video\/(mp4|quicktime|webm|x-matroska))$/;
 export const MAX_BYTES = 2 * 1024 * 1024 * 1024;
+const STALL_MS = 15 * 60 * 1000;
 
 function freshProcessing(from: StageName) {
   const stages: Record<string, unknown> = {};
@@ -71,6 +72,21 @@ export const retryProcessing = onCall(opts, async (req) => {
   const snap = await ref.get();
   if (!snap.exists) throw new HttpsError("not-found", "Sermon not found.");
   const s = snap.data()!;
+  // Resume renders that stalled (e.g. an instance died mid-render).
+  if (s.status === "processing" && (s.processing?.stage === "generate" || s.processing?.stages?.render?.status === "running")) {
+    const stuck = await churchRef(m.churchId).collection("assets").where("sermonId", "==", sermonId).where("status", "==", "processing").get();
+    const stale = stuck.docs.filter((d) => {
+      const t = d.get("render.startedAt")?.toMillis?.() ?? d.get("updatedAt")?.toMillis?.() ?? 0;
+      return Date.now() - t > STALL_MS;
+    });
+    if (!stale.length) throw new HttpsError("failed-precondition", "Rendering is still in progress. Give it a few more minutes.");
+    for (const d of stale) {
+      await d.ref.update({ "render.status": "pending", "render.error": null, "render.startedAt": FieldValue.serverTimestamp() });
+      await enqueue("renderAssetTask", { churchId: m.churchId, assetId: d.id, reason: "retry" });
+    }
+    await ref.update({ "processing.history": FieldValue.arrayUnion({ at: new Date().toISOString(), level: "info", message: `Resumed ${stale.length} stalled render${stale.length === 1 ? "" : "s"}.` }) });
+    return { ok: true, from: "render" };
+  }
   if (!["failed", "needs_configuration"].includes(s.status)) {
     throw new HttpsError("failed-precondition", "Only sermons that stopped processing can be retried.");
   }
@@ -233,7 +249,9 @@ export const retryRender = onCall(opts, async (req) => {
   const ref = assetRef(m.churchId, assetId);
   const a = (await ref.get()).data();
   if (!a) throw new HttpsError("not-found", "Asset not found.");
-  if (a.render?.status !== "failed") throw new HttpsError("failed-precondition", "This asset doesn't need re-rendering.");
+  const startedMs = a.render?.startedAt?.toMillis?.() ?? a.updatedAt?.toMillis?.() ?? 0;
+  const stalled = ["pending", "running"].includes(a.render?.status) && Date.now() - startedMs > STALL_MS;
+  if (a.render?.status !== "failed" && !stalled) throw new HttpsError("failed-precondition", "This asset is still rendering. Try again in a few minutes.");
   await ref.update({ status: "processing", "render.status": "pending", "render.error": null });
   await enqueue("renderAssetTask", { churchId: m.churchId, assetId, reason: "retry" });
   return { ok: true };

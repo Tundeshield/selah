@@ -46,6 +46,8 @@ export default function SermonWorkspace() {
   }
 
   const processing = ["queued", "processing"].includes(sermon.status);
+  const renderStarted = sermon.processing?.stages?.render?.startedAt?.toMillis?.() ?? 0;
+  const rendersStalled = sermon.status === "processing" && sermon.processing?.stages?.render?.status === "running" && renderStarted > 0 && Date.now() - renderStarted > 15 * 60 * 1000;
   const stopped = ["failed", "needs_configuration"].includes(sermon.status);
 
   async function run(key: string, fn: () => Promise<unknown>, ok?: string) {
@@ -93,6 +95,18 @@ export default function SermonWorkspace() {
       </div>
 
       {sermon.status === "uploading" && <ResumeUpload sermon={sermon} churchId={churchId} />}
+
+      {rendersStalled && can("contributor") && (
+        <div className="mb-6">
+          <Notice
+            tone="warn"
+            title="Rendering is taking longer than expected"
+            action={<Button size="sm" icon={<RotateCcw className="h-4 w-4" />} loading={busy === "resume"} onClick={() => run("resume", () => api.retryProcessing({ churchId, sermonId }), "Rendering resumed")}>Resume rendering</Button>}
+          >
+            Some clips seem to have stalled. Resume to pick up where it left off — finished clips are kept.
+          </Notice>
+        </div>
+      )}
 
       {stopped && (
         <div className="mb-6">

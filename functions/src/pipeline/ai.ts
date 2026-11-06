@@ -175,7 +175,7 @@ export async function analyseSermon(
 Analyse the sermon transcript below. Each line is "[segment|timestamp] text".
 
 Clip candidates:
-- ${opts.hasTimestamps ? `Choose up to ${opts.maxClips ?? 8} moments (aim for 3–8; fewer is fine if the sermon has fewer suitable moments).` : "This transcript has no reliable timestamps — return an empty clips list."}
+- ${opts.hasTimestamps ? `Choose the ${opts.maxClips ?? 4} strongest moments at most, best first. Quality over quantity: fewer is fine if the sermon has fewer excellent moments.` : "This transcript has no reliable timestamps — return an empty clips list."}
 - Each clip should run roughly ${opts.clipMin}–${opts.clipMax} seconds.
 - Prioritise complete thoughts, clear context, meaningful teaching and a natural beginning and ending. Do not pick moments just because they are loud or emotional.
 - Avoid clips that begin mid-sentence or depend on something said earlier.
