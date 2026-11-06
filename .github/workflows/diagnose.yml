@@ -21,4 +21,4 @@ jobs:
         run: |
           P=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.default)")
           gcloud logging read 'resource.type="cloud_run_revision" AND (resource.labels.service_name="processsermontask" OR resource.labels.service_name="renderassettask") AND severity>=DEFAULT' \
-            --project "$P" --freshness=1d --limit=60 --format='value(timestamp,severity,textPayload,jsonPayload.message)' | cut -c1-1500
+            --project "$P" --freshness=6h --limit=120 --format='value(timestamp,severity,textPayload,jsonPayload.message)' | cut -c1-1500
