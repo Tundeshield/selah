@@ -5,7 +5,7 @@ import { Film, Image as ImageIcon, FileText, Mic, Loader2, AlertTriangle } from 
 import { Badge } from "./ui";
 import { ASSET_STATUS, ASSET_TYPE, SERMON_STATUS, assetTypeLabel } from "../lib/constants";
 import type { Asset, AssetStatus, SermonStatus } from "../lib/types";
-import { useStorageUrl } from "../lib/hooks";
+import { useStorageImage, useStorageUrl } from "../lib/hooks";
 import { drawGraphic, GraphicSettings, loadImage } from "../lib/graphic";
 import { useChurch } from "../context/ChurchContext";
 import { fmtDuration } from "../lib/format";
@@ -64,10 +64,11 @@ export function GraphicCanvas({ settings, className, canvasRef }: { settings: Gr
   useEffect(() => {
     if (church?.logoUrl) loadImage(church.logoUrl).then(setLogo);
   }, [church?.logoUrl]);
+  const photo = useStorageImage(settings.template === "photo" ? settings.photo?.path : null);
   useEffect(() => {
-    if (ref.current) drawGraphic(ref.current, settings, { churchName: church?.name, logo, brandAccent: church?.brand?.accent });
+    if (ref.current) drawGraphic(ref.current, settings, { churchName: church?.name, logo, brandAccent: church?.brand?.accent, photo });
     if (canvasRef) canvasRef.current = ref.current;
-  }, [settings, logo, church?.name, church?.brand?.accent, canvasRef]);
+  }, [settings, logo, photo, church?.name, church?.brand?.accent, canvasRef]);
   return <canvas ref={ref} className={clsx("h-auto w-full", className)} role="img" aria-label={`Quote graphic: ${settings.quote}`} />;
 }
 

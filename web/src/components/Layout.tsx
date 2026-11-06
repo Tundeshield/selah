@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { doc, getDoc, updateDoc, writeBatch, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { Home, Mic2, LayoutGrid, CalendarDays, Settings, Bell, LogOut, Upload, ChevronsUpDown, Check, X, Type } from "lucide-react";
+import { Home, Mic2, LayoutGrid, CalendarDays, Settings, Bell, LogOut, Upload, ChevronsUpDown, Check, X, Type, Images } from "lucide-react";
+import { useFlags } from "../lib/flags";
 import { useAuth } from "../context/AuthContext";
 import { useChurch } from "../context/ChurchContext";
 import { db, usingEmulators } from "../lib/firebase";
@@ -15,6 +16,7 @@ const NAV = [
   { to: "/", label: "Overview", short: "Overview", icon: Home, end: true },
   { to: "/sermons", label: "Sermons", short: "Sermons", icon: Mic2 },
   { to: "/studio", label: "Content Studio", short: "Studio", icon: LayoutGrid },
+  { to: "/media", label: "Media", short: "Media", icon: Images, flag: "photoEditor" as const },
   { to: "/calendar", label: "Publishing Calendar", short: "Calendar", icon: CalendarDays },
   { to: "/settings", label: "Church Settings", short: "Settings", icon: Settings },
 ];
@@ -215,6 +217,8 @@ function UserMenu({ placement = "side" }: { placement?: "side" | "top" }) {
 }
 
 export function AppLayout() {
+  const flags = useFlags();
+  const nav = NAV.filter((n) => !("flag" in n) || (n.flag && flags[n.flag]));
   const { church } = useChurch();
   const location = useLocation();
   const navigate = useNavigate();
@@ -234,7 +238,7 @@ export function AppLayout() {
         </div>
         <ChurchSwitcher />
         <nav className="mt-6 flex flex-col gap-1">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
@@ -287,8 +291,8 @@ export function AppLayout() {
       </main>
 
       {/* Mobile bottom navigation */}
-      <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-2xl bg-ink p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-pop md:hidden" aria-label="Primary">
-        {NAV.map((n) => (
+      <nav className="fixed inset-x-3 bottom-3 z-30 grid rounded-2xl bg-ink p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-pop md:hidden" aria-label="Primary" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}>
+        {nav.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => clsx("flex flex-col items-center gap-1 rounded-xl py-2 text-[0.68rem] font-medium", isActive ? "bg-white/10 text-white" : "text-white/55")}>
             {({ isActive }) => (
               <>

@@ -98,3 +98,40 @@ export function useMediaQuery(q: string) {
   }, [q]);
   return m;
 }
+
+const imgCache = new Map<string, Promise<HTMLImageElement | null>>();
+
+/** Load a Storage image as a canvas-safe (CORS) HTMLImageElement. */
+export function loadStorageImage(path: string): Promise<HTMLImageElement | null> {
+  if (!imgCache.has(path)) {
+    imgCache.set(
+      path,
+      storageUrl(path)
+        .then(
+          (u) =>
+            new Promise<HTMLImageElement | null>((resolve) => {
+              const img = new Image();
+              img.crossOrigin = "anonymous";
+              img.onload = () => resolve(img);
+              img.onerror = () => resolve(null);
+              img.src = u;
+            }),
+        )
+        .catch(() => null),
+    );
+  }
+  return imgCache.get(path)!;
+}
+
+export function useStorageImage(path?: string | null) {
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setImg(null);
+    if (path) loadStorageImage(path).then((i) => alive && setImg(i));
+    return () => {
+      alive = false;
+    };
+  }, [path]);
+  return img;
+}

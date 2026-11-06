@@ -124,3 +124,13 @@ jobs:
           if [ -z "$B" ]; then B="${{ steps.project.outputs.id }}.firebasestorage.app"; fi
           gcloud storage buckets update "gs://$B" --cors-file=cors.json --project "${{ steps.project.outputs.id }}" \
             || echo "::warning::Could not set CORS on gs://$B — set the FIREBASE_STORAGE_BUCKET variable to your bucket name."
+
+      - name: Create feature flags (first deploy only — never overwrites)
+        run: |
+          T=$(gcloud auth print-access-token)
+          URL="https://firestore.googleapis.com/v1/projects/${{ steps.project.outputs.id }}/databases/(default)/documents/config?documentId=flags"
+          CODE=$(curl -s -o /tmp/flags.json -w '%{http_code}' -X POST "$URL" -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+            -d '{"fields":{"photoEditor":{"booleanValue":true}}}')
+          if [ "$CODE" = "200" ]; then echo "Created config/flags (photoEditor: on)";
+          elif [ "$CODE" = "409" ]; then echo "config/flags already exists — left unchanged";
+          else echo "::warning::Could not create config/flags (HTTP $CODE)"; cat /tmp/flags.json; fi

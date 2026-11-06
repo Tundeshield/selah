@@ -18,7 +18,44 @@ const MINOR_KEYS = ["socialCaption", "title"];
 const s = (v: unknown, max = 20000) => (typeof v === "string" ? v.slice(0, max) : "");
 const arr = (v: unknown, max = 50) => (Array.isArray(v) ? v.slice(0, max).map((x) => s(x, 2000)) : []);
 
-function sanitizeContent(type: string, current: DocumentData, patch: Record<string, unknown>): Record<string, unknown> {
+const num = (v: unknown, min: number, max: number, d: number) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : d;
+};
+
+/** A photo background on a quote graphic: a library photo + its edit settings. */
+function sanitizePhoto(v: unknown, churchId: string): unknown {
+  if (!v || typeof v !== "object") return null;
+  const p = v as Record<string, unknown>;
+  const path = s(p.path, 300);
+  if (!path.startsWith(`churches/${churchId}/media/`) || path.includes("..")) return null;
+  const e = (p.edit && typeof p.edit === "object" ? p.edit : {}) as Record<string, unknown>;
+  const pick = <T extends string>(x: unknown, opts: T[], d: T) => (opts.includes(String(x) as T) ? (String(x) as T) : d);
+  return {
+    path,
+    mediaId: s(p.mediaId, 100),
+    edit: {
+      zoom: num(e.zoom, 1, 3, 1),
+      panX: num(e.panX, -1, 1, 0),
+      panY: num(e.panY, -1, 1, 0),
+      flip: e.flip === true,
+      filter: s(e.filter, 30) || "original",
+      brightness: num(e.brightness, -100, 100, 0),
+      contrast: num(e.contrast, -100, 100, 0),
+      saturation: num(e.saturation, -100, 100, 0),
+      warmth: num(e.warmth, -100, 100, 0),
+      fade: num(e.fade, 0, 100, 0),
+      blur: num(e.blur, 0, 100, 0),
+      vignette: num(e.vignette, 0, 100, 0),
+      grain: num(e.grain, 0, 100, 0),
+      overlay: pick(e.overlay, ["none", "dark", "brand", "light"], "dark"),
+      overlayStyle: pick(e.overlayStyle, ["full", "bottom", "top"], "full"),
+      overlayAmount: num(e.overlayAmount, 0, 90, 50),
+    },
+  };
+}
+
+function sanitizeContent(type: string, current: DocumentData, patch: Record<string, unknown>, churchId = ""): Record<string, unknown> {
   const out: Record<string, unknown> = { ...current };
   const pick = (k: string, fn: (v: unknown) => unknown) => {
     if (k in patch) out[k] = fn(patch[k]);
@@ -40,6 +77,7 @@ function sanitizeContent(type: string, current: DocumentData, patch: Record<stri
     case "graphic":
       for (const k of ["quote", "attribution", "sermonTitle", "scripture"]) pick(k, (v) => s(v, 600));
       pick("template", (v) => (/^[a-z][a-z-]{1,23}$/.test(String(v)) ? v : "cream"));
+      pick("photo", (v) => sanitizePhoto(v, churchId));
       pick("artSeed", (v) => (Number.isFinite(Number(v)) ? Math.abs(Math.floor(Number(v))) % 1e9 : 1));
       pick("align", (v) => (["left", "center"].includes(String(v)) ? v : "center"));
       pick("logoPosition", (v) => (["top", "bottom", "none"].includes(String(v)) ? v : "bottom"));
@@ -97,7 +135,7 @@ export const updateAsset = onCall(opts, async (req) => {
     changedKeys.push("title");
   }
   if (patch.content && typeof patch.content === "object") {
-    const next = sanitizeContent(a.type, a.content || {}, patch.content);
+    const next = sanitizeContent(a.type, a.content || {}, patch.content, m.churchId);
     for (const k of Object.keys(next)) {
       if (JSON.stringify(next[k]) !== JSON.stringify((a.content || {})[k])) changedKeys.push(k);
     }

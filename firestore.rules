@@ -116,6 +116,19 @@ service cloud.firestore {
         }
       }
 
+      // ---------- Media library (photos) ----------
+      match /media/{mediaId} {
+        allow read: if isMember(churchId);
+        allow create: if hasRole(churchId, 'contributor')
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.path == 'churches/' + churchId + '/media/' + mediaId + '/photo.jpg'
+          && request.resource.data.thumbPath == 'churches/' + churchId + '/media/' + mediaId + '/thumb.jpg'
+          && request.resource.data.name is string && request.resource.data.name.size() <= 120;
+        allow update: if hasRole(churchId, 'contributor')
+          && onlyChanges(['name', 'edit', 'text', 'outputSize', 'updatedAt']);
+        allow delete: if hasRole(churchId, 'editor');
+      }
+
       // ---------- Publications ----------
       match /publications/{publicationId} {
         allow read: if isMember(churchId);
@@ -136,6 +149,12 @@ service cloud.firestore {
         allow read: if hasRole(churchId, 'admin');
         allow write: if false;
       }
+    }
+
+    // ---------- Feature flags (edited in the Firebase console) ----------
+    match /config/flags {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
     // Deny everything else.

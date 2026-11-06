@@ -10,6 +10,8 @@ import { api } from "../lib/api";
 import { ASSET_TYPE, assetTypeLabel, platformLabel } from "../lib/constants";
 import { errMessage, fmtClock, fmtDuration, fmtRelative, tsDate } from "../lib/format";
 import { GRAPHIC_SIZES, TEMPLATES, drawBackground } from "../lib/graphic";
+import { useFlags } from "../lib/flags";
+import { PhotoBackgroundPicker } from "../components/PhotoBackground";
 import type { Asset, AssetVersion, Cue, Revision, Sermon } from "../lib/types";
 import { Button, Card, EmptyState, Input, Modal, Notice, PageLoading, Select, Tabs, Textarea, useToast } from "../components/ui";
 import { AssetStatusBadge, GraphicCanvas, TypeIcon } from "../components/bits";
@@ -435,6 +437,7 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
   const c = draft.content;
   const setC = (patch: Record<string, unknown>) => setDraft({ ...draft, content: { ...c, ...patch } });
   const brandAccent = useChurch().church?.brand?.accent;
+  const flags = useFlags();
 
   if (asset.type === "video") {
     const src = draft.source || { start: 0, end: 0 };
@@ -519,6 +522,16 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
               </button>
             )}
           </div>
+          {flags.photoEditor && (
+            <div className="mb-3">
+              <div className="mb-1.5 text-xs text-fg-muted">Your photos</div>
+              <PhotoBackgroundPicker
+                active={c.template === "photo"}
+                value={c.photo || null}
+                onChange={(photo) => setC(photo ? { template: "photo", photo } : { template: "forest", photo: null })}
+              />
+            </div>
+          )}
           {(["art", "plain"] as const).map((g) => (
             <div key={g} className="mb-3">
               <div className="mb-1.5 text-xs text-fg-muted">{g === "art" ? "Artwork" : "Plain"}</div>

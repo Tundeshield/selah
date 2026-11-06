@@ -221,3 +221,18 @@ export interface AppNotification {
   read: boolean;
   createdAt?: Timestamp;
 }
+
+export interface MediaItem {
+  id: string;
+  name: string;
+  path: string;
+  thumbPath: string;
+  width: number;
+  height: number;
+  size: number;
+  createdBy: string;
+  createdAt?: { toDate: () => Date } | null;
+  edit?: import("./photo").PhotoEdit;
+  text?: import("./photo").PhotoText;
+  outputSize?: string;
+}

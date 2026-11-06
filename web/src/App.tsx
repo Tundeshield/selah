@@ -20,6 +20,8 @@ const ContentStudio = lazy(() => import("./pages/ContentStudio"));
 const AssetReview = lazy(() => import("./pages/AssetReview"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Media = lazy(() => import("./pages/Media"));
+const PhotoEditor = lazy(() => import("./pages/PhotoEditor"));
 
 function SetupRequired() {
   return (
@@ -106,6 +108,8 @@ function ChurchApp() {
             <Route path="studio/:assetId" element={<AssetReview />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="media" element={<Media />} />
+            <Route path="media/:mediaId" element={<PhotoEditor />} />
             <Route path="*" element={<EmptyState title="Page not found" action={<Button onClick={() => window.history.back()}>Go back</Button>}>This page doesn't exist.</EmptyState>} />
           </Route>
         </Routes>

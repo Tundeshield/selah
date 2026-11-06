@@ -1,3 +1,5 @@
+import { DEFAULT_EDIT, PhotoEdit, renderPhoto } from "./photo";
+
 /**
  * Quote graphics are rendered deterministically from their stored settings,
  * both for previews and for the downloadable PNG.
@@ -13,7 +15,11 @@ export interface GraphicSettings {
   size: "square" | "portrait" | "story" | "landscape";
   /** Varies the generated artwork; unset = derived from the quote. */
   artSeed?: number;
+  /** Photo background (template "photo"). */
+  photo?: { path: string; mediaId?: string; edit: PhotoEdit } | null;
 }
+
+export const PHOTO_BG_EDIT: PhotoEdit = { ...DEFAULT_EDIT, overlay: "dark", overlayStyle: "full", overlayAmount: 50 };
 
 export const GRAPHIC_SIZES: Record<GraphicSettings["size"], { w: number; h: number; label: string }> = {
   square: { w: 1080, h: 1080, label: "Square 1:1" },
@@ -27,7 +33,7 @@ type ArtFn = (ctx: CanvasRenderingContext2D, w: number, h: number, rnd: Rng, acc
 
 export interface Template {
   label: string;
-  group: "plain" | "art";
+  group: "plain" | "art" | "photo";
   bg: string;
   fg: string;
   accent: string;
@@ -199,6 +205,7 @@ export const TEMPLATES: Record<string, Template> = {
   waves: { label: "Waves", group: "art", bg: "#0A1220", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#B4BFCB", art: ART.waves },
   dawn: { label: "Dawn", group: "art", bg: "#FFFFFF", fg: "#0B0D0E", accent: "#0D8D86", sub: "#3F4A49", art: ART.dawn },
   contour: { label: "Contour", group: "art", bg: "#F4F4F1", fg: "#0B0D0E", accent: "#0D8D86", sub: "#57544F", art: ART.contour },
+  photo: { label: "Photo", group: "photo", bg: "#0B0D0E", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#E2E6E5" },
   dots: { label: "Halftone", group: "art", bg: "#FFFFFF", fg: "#0B0D0E", accent: "#2ECBBE", sub: "#57544F", art: ART.dots },
 };
 
@@ -239,7 +246,7 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string
 export async function drawGraphic(
   canvas: HTMLCanvasElement,
   s: GraphicSettings,
-  opts: { churchName?: string; logo?: HTMLImageElement | null; brandAccent?: string } = {},
+  opts: { churchName?: string; logo?: HTMLImageElement | null; brandAccent?: string; photo?: HTMLImageElement | null } = {},
 ) {
   const { w, h } = GRAPHIC_SIZES[s.size] || GRAPHIC_SIZES.square;
   const t = TEMPLATES[s.template] || TEMPLATES.cream;
@@ -258,6 +265,7 @@ export async function drawGraphic(
   }
   const accent = t.accent === "#2ECBBE" && opts.brandAccent ? opts.brandAccent : t.accent;
   drawBackground(ctx, w, h, s.template, accent, s.artSeed ?? hashStr(s.quote || ""));
+  if (s.template === "photo" && opts.photo) renderPhoto(ctx, opts.photo, w, h, { ...PHOTO_BG_EDIT, ...(s.photo?.edit || {}) }, opts.brandAccent);
   const pad = Math.round(w * 0.1);
 
   // Quote mark

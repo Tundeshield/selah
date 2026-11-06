@@ -53,6 +53,16 @@ service firebase.storage {
         && request.resource.contentType.matches('image/(png|jpeg|webp|svg\\+xml)');
     }
 
+    // Media library photos (resized in the browser before upload).
+    match /churches/{churchId}/media/{mediaId}/{fileName} {
+      allow read: if isMember(churchId);
+      allow create, update: if canContribute(churchId)
+        && fileName in ['photo.jpg', 'thumb.jpg']
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType == 'image/jpeg';
+      allow delete: if isMember(churchId) && roleOf(churchId) in ['admin', 'editor'];
+    }
+
     // Generated media: read-only for members.
     match /churches/{churchId}/assets/{rest=**} {
       allow read: if isMember(churchId);

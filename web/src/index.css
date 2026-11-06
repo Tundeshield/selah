@@ -81,3 +81,45 @@ html[data-text-size="xlarge"] { font-size: 131.25%; } /* 21px */
 .scrollbar-thin::-webkit-scrollbar-thumb { background: #d6d4cf; border-radius: 99px; }
 
 input[type="range"], input[type="checkbox"], input[type="radio"] { accent-color: #0b0d0e; }
+
+/* Range sliders used by the photo editor */
+.selah-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.25rem;
+  background: transparent;
+  cursor: pointer;
+}
+.selah-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: #e2e2de;
+}
+.selah-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: #e2e2de;
+}
+.selah-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  margin-top: -6px;
+  height: 16px;
+  width: 16px;
+  border-radius: 999px;
+  background: #0b0d0e;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1px rgba(11, 13, 14, 0.25), 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.selah-range::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 999px;
+  background: #0b0d0e;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1px rgba(11, 13, 14, 0.25);
+}
+.selah-range:focus-visible {
+  outline: 2px solid rgb(var(--brand-500));
+  outline-offset: 4px;
+  border-radius: 6px;
+}
