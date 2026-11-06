@@ -1,6 +1,6 @@
 name: Deploy Firebase backend
 
-# Deploys Firestore/Storage rules, indexes and Cloud Functions to Firebase.
+# Deploys Firestore/Storage rules, indexes and Cloud Functions to Firebase (project selah-studio-hnxp).
 # Runs on every push to main that touches the backend, or manually from the
 # Actions tab ("Run workflow").
 #
