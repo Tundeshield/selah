@@ -74,6 +74,15 @@ jobs:
           echo "id=$P" >> "$GITHUB_OUTPUT"
           echo "Deploying to Firebase project: $P"
 
+      - name: Enable required Google APIs
+        run: |
+          gcloud services enable \
+            cloudbilling.googleapis.com cloudresourcemanager.googleapis.com \
+            cloudfunctions.googleapis.com run.googleapis.com cloudbuild.googleapis.com \
+            artifactregistry.googleapis.com eventarc.googleapis.com cloudtasks.googleapis.com \
+            secretmanager.googleapis.com iam.googleapis.com \
+            --project "${{ steps.project.outputs.id }}"
+
       - name: Set function secrets
         env:
           DEEPGRAM: ${{ secrets.DEEPGRAM_API_KEY }}
