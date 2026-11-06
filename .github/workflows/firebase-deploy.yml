@@ -97,7 +97,16 @@ jobs:
           rm -f /tmp/deepgram /tmp/anthropic
 
       - name: Deploy rules, indexes and functions
-        run: firebase deploy --only firestore,storage,functions --project "${{ steps.project.outputs.id }}" --non-interactive --force
+        run: |
+          # First deploys to a new project can hit transient Google errors
+          # (e.g. 409 creating the gcf-v2-sources bucket), so retry once.
+          for attempt in 1 2; do
+            if firebase deploy --only firestore,storage,functions --project "${{ steps.project.outputs.id }}" --non-interactive --force 2>&1 | tee deploy.out; then
+              if ! grep -qE "failed to (create|update) function|Functions deploy had errors" deploy.out; then exit 0; fi
+            fi
+            echo "Deploy attempt $attempt had errors; retrying in 30s…"; sleep 30
+          done
+          exit 1
 
       - name: Allow graphic export from Storage (CORS)
         run: |
