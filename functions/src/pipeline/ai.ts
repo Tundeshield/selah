@@ -45,17 +45,37 @@ function churchContext(church: ChurchDoc, sermon: { title?: string; preacher?: s
 }
 
 async function callTool<T>(name: string, description: string, schema: Record<string, unknown>, prompt: string, maxTokens = 8000): Promise<T> {
-  const res = await client().messages.create({
-    model: ANTHROPIC_MODEL(),
-    max_tokens: maxTokens,
-    system: INTEGRITY_RULES,
-    tools: [{ name, description, input_schema: schema as Anthropic.Tool["input_schema"] }],
-    tool_choice: { type: "tool", name },
-    messages: [{ role: "user", content: prompt }],
-  });
-  const block = res.content.find((b) => b.type === "tool_use");
-  if (!block || block.type !== "tool_use") throw new Error("The AI service returned no structured result.");
-  return block.input as T;
+  // Newer models don't allow forcing a specific tool, so we offer one tool,
+  // instruct the model to use it, and fall back to parsing JSON from text.
+  const instruction = `\n\nRecord your answer by calling the "${name}" tool exactly once. Do not reply with plain text.`;
+  let lastText = "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await client().messages.create({
+      model: ANTHROPIC_MODEL(),
+      max_tokens: maxTokens,
+      system: INTEGRITY_RULES,
+      tools: [{ name, description, input_schema: schema as Anthropic.Tool["input_schema"] }],
+      tool_choice: { type: "auto" },
+      messages: [{ role: "user", content: prompt + instruction }],
+    });
+    const block = res.content.find((b) => b.type === "tool_use" && b.name === name);
+    if (block && block.type === "tool_use") return block.input as T;
+    lastText = res.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
+    const json = extractJson(lastText);
+    if (json) return json as T;
+  }
+  throw new Error(`The AI service did not return structured content. ${lastText.slice(0, 160)}`);
+}
+
+function extractJson(text: string): unknown | null {
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(text);
+  const candidate = fenced ? fenced[1] : text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
+  if (!candidate || !candidate.trim().startsWith("{")) return null;
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -165,7 +185,21 @@ ${opts.avoid ? `\nThe team already has content from these moments — choose DIF
 <transcript>
 ${transcriptForPrompt(segments)}
 </transcript>`;
-  return callTool<AnalysisResult>("record_sermon_analysis", "Record the analysis of the sermon.", analysisSchema, prompt, 10000);
+  const r = await callTool<Partial<AnalysisResult>>("record_sermon_analysis", "Record the analysis of the sermon.", analysisSchema, prompt, 10000);
+  const arr = <X,>(v: X[] | undefined) => (Array.isArray(v) ? v : []);
+  return {
+    suggestedTitle: r.suggestedTitle,
+    mainTheme: r.mainTheme || "",
+    keyPoints: arr(r.keyPoints),
+    illustrations: arr(r.illustrations),
+    practicalApplications: arr(r.practicalApplications),
+    conclusion: r.conclusion || "",
+    scriptureReferences: arr(r.scriptureReferences),
+    importantStatements: arr(r.importantStatements),
+    clips: arr(r.clips),
+    quotes: arr(r.quotes),
+    uncertainties: arr(r.uncertainties),
+  };
 }
 
 // ---------------------------------------------------------------------------
