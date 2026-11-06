@@ -29,14 +29,20 @@ service firebase.storage {
           || request.resource.contentType.matches('video/(mp4|quicktime|webm|x-matroska)');
     }
 
-    // Original sermon recordings: 2 GB limit.
+    function sermonAwaitingRecording(churchId, sermonId) {
+      return firestore.get(/databases/(default)/documents/churches/$(churchId)/sermons/$(sermonId)).data.status == 'uploading';
+    }
+
+    // Original sermon recordings: 2 GB limit. A recording can be (re)uploaded
+    // only while its sermon is still waiting for it; after that it is preserved.
     match /churches/{churchId}/sermons/{sermonId}/{fileName} {
       allow read: if isMember(churchId);
-      allow create: if canContribute(churchId)
-        && fileName.matches('original\\..+')
+      allow create, update: if canContribute(churchId)
+        && sermonAwaitingRecording(churchId, sermonId)
+        && fileName.matches('original[.].+')
         && request.resource.size < 2 * 1024 * 1024 * 1024
         && isSermonMedia();
-      allow update, delete: if false;
+      allow delete: if false;
     }
 
     // Church branding (logo): admins only, images up to 5 MB.

@@ -23,8 +23,8 @@
  * Text size — a per-person setting (see src/lib/textSize.ts). Everything in
  * the UI is sized in rem, so changing the root size scales the whole app.
  */
-html { font-size: 106.25%; }             /* default: 17px */
-html[data-text-size="small"] { font-size: 93.75%; }   /* 15px */
+html { font-size: 93.75%; }                              /* small (default): 15px */
+html[data-text-size="default"] { font-size: 106.25%; }  /* medium: 17px */
 html[data-text-size="large"] { font-size: 118.75%; }  /* 19px */
 html[data-text-size="xlarge"] { font-size: 131.25%; } /* 21px */
 

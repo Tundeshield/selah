@@ -49,7 +49,7 @@ export default function Settings() {
           <Card className="space-y-4 p-6">
             <div>
               <h2 className="h-section">Text size</h2>
-              <p className="mt-1 text-[0.94rem] text-fg-muted">Choose what's comfortable to read. This changes text and controls throughout Selah Studio and is saved to your account, so it follows you to other devices.</p>
+              <p className="mt-1 text-[0.94rem] text-fg-muted">Choose what's comfortable to read — Small is the default. This changes text and controls throughout Selah Studio and is saved to your account, so it follows you to other devices.</p>
             </div>
             <TextSizeControl />
             <p className="text-[0.8rem] text-fg-muted">You can also change it any time from your name at the bottom of the sidebar.</p>

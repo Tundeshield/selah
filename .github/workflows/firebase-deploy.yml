@@ -108,6 +108,16 @@ jobs:
           done
           exit 1
 
+      - name: Let Storage rules read Firestore (church membership checks)
+        run: |
+          N=$(gcloud projects describe "${{ steps.project.outputs.id }}" --format='value(projectNumber)')
+          gcloud beta services identity create --service=firebasestorage.googleapis.com --project "${{ steps.project.outputs.id }}" >/dev/null 2>&1 || true
+          gcloud projects add-iam-policy-binding "${{ steps.project.outputs.id }}" \
+            --member="serviceAccount:service-$N@gcp-sa-firebasestorage.iam.gserviceaccount.com" \
+            --role="roles/firebaserules.firestoreServiceAgent" --condition=None --quiet >/dev/null \
+            && echo "Granted Storage → Firestore access" \
+            || echo "::warning::Could not grant Storage access to Firestore. In Google Cloud IAM, give service-$N@gcp-sa-firebasestorage.iam.gserviceaccount.com the role 'Firebase Rules Firestore Service Agent'."
+
       - name: Allow graphic export from Storage (CORS)
         run: |
           B="${{ vars.FIREBASE_STORAGE_BUCKET }}"

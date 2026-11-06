@@ -112,7 +112,7 @@ To use the Firebase emulators set `VITE_USE_EMULATORS=true`, copy `functions/.se
 - **Colour:** ink `#0b0d0e`, warm paper neutrals (`#f4f4f1` canvas, white cards) and one accent, Selah teal (`#2ecbbe`; scale in `--brand-*` CSS variables in `web/src/index.css`). Ink is the primary action colour in the app; teal is for highlights and marketing CTAs.
 - **Type:** Archivo, expanded (`.font-wide`, `.display-xl`, `.display-lg`) for headlines and page titles; Inter for the interface. Both self-hosted.
 - **Shape:** soft radii (12px controls, 16–24px cards), pill tabs and badges.
-- **Accessibility:** every size is in `rem`. Each person picks Small / Default / Large / Extra large (sidebar → your name, or Settings → Your preferences); it applies instantly, is remembered on the device and synced to their account. Default is 17px.
+- **Accessibility:** every size is in `rem`. Each person picks Small (default, 15px) / Medium / Large / Extra large (sidebar → your name, or Settings → Your preferences); it applies instantly, is remembered on the device and synced to their account.
 
 Tokens live in `web/tailwind.config.js` and `web/src/index.css`.
 

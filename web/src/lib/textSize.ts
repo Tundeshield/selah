@@ -4,7 +4,7 @@ export type TextSize = "small" | "default" | "large" | "xlarge";
 
 export const TEXT_SIZES: { id: TextSize; label: string; sample: string }[] = [
   { id: "small", label: "Small", sample: "text-[0.85rem]" },
-  { id: "default", label: "Default", sample: "text-[1rem]" },
+  { id: "default", label: "Medium", sample: "text-[1rem]" },
   { id: "large", label: "Large", sample: "text-[1.15rem]" },
   { id: "xlarge", label: "Extra large", sample: "text-[1.3rem]" },
 ];
@@ -23,13 +23,13 @@ export function getTextSize(): TextSize {
   } catch {
     /* storage unavailable */
   }
-  return "default";
+  return "small"; // smallest is the default
 }
 
 /** Apply a text size to the page and remember it on this device. */
 export function applyTextSize(size: TextSize) {
   const html = document.documentElement;
-  if (size === "default") html.removeAttribute("data-text-size");
+  if (size === "small") html.removeAttribute("data-text-size");
   else html.setAttribute("data-text-size", size);
   try {
     localStorage.setItem(KEY, size);
