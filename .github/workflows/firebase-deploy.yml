@@ -70,7 +70,7 @@ jobs:
         id: project
         run: |
           P="${{ vars.FIREBASE_PROJECT_ID }}"
-          if [ -z "$P" ]; then P=$(node -p "require('./.firebaserc').projects.default"); fi
+          if [ -z "$P" ]; then P=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.default)"); fi
           echo "id=$P" >> "$GITHUB_OUTPUT"
           echo "Deploying to Firebase project: $P"
 
