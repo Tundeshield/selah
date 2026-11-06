@@ -7,6 +7,7 @@ import { DocumentData } from "firebase-admin/firestore";
 import {
   assetRef, bucket, churchRef, db, FieldValue, REGION, sermonRef, signedReadUrl, transcriptRef,
 } from "../lib/admin";
+import { withStorageMedia } from "../lib/mediaProxy";
 import { ANTHROPIC_API_KEY, DEEPGRAM_API_KEY, IntegrationMissingError } from "../lib/config";
 import { notify } from "../lib/events";
 import { saveVersion } from "../lib/assets";
@@ -143,23 +144,30 @@ async function stageProbe(churchId: string, sermonId: string, sermon: DocumentDa
   if (!sermon.media?.path) throw new Error("The original recording is missing. Please upload it again.");
   const [exists] = await bucket().file(sermon.media.path).exists();
   if (!exists) throw new Error("The original recording could not be found in storage. Please upload it again.");
-  const url = await signedReadUrl(sermon.media.path);
-  const probe = await probeMedia(url);
-  if (!probe.durationSec) throw new Error("This file does not look like a playable audio or video recording.");
-  const patch: Record<string, unknown> = { durationSec: Math.round(probe.durationSec), "media.hasVideo": probe.hasVideo };
-  if (probe.hasVideo) {
-    try {
-      const poster = await renderPoster(url, Math.min(120, probe.durationSec * 0.1));
-      const dest = `churches/${churchId}/assets/sermons/${sermonId}/poster.jpg`;
-      await bucket().upload(poster.file, { destination: dest, contentType: "image/jpeg" });
-      patch.thumbnailPath = dest;
-      await cleanup(poster.dir);
-    } catch (e) {
-      logger.warn("Poster frame failed", e);
+  const patch: Record<string, unknown> = {};
+  const probe = await withStorageMedia(sermon.media.path, async (url) => {
+    const p = await probeMedia(url);
+    if (!p.durationSec) {
+      if (p.invalid) throw new Error("This file does not look like a playable audio or video recording.");
+      throw new Error(`The recording could not be read (${p.error || "media tool error"}). Please retry.`);
     }
-  }
+    if (p.hasVideo) {
+      try {
+        const poster = await renderPoster(url, Math.min(120, p.durationSec * 0.1));
+        const dest = `churches/${churchId}/assets/sermons/${sermonId}/poster.jpg`;
+        await bucket().upload(poster.file, { destination: dest, contentType: "image/jpeg" });
+        patch.thumbnailPath = dest;
+        await cleanup(poster.dir);
+      } catch (e) {
+        logger.warn("Poster frame failed", e);
+      }
+    }
+    return p;
+  });
+  patch.durationSec = Math.round(probe.durationSec!);
+  patch["media.hasVideo"] = probe.hasVideo;
   await sermonRef(churchId, sermonId).update(patch);
-  await logHistory(churchId, sermonId, `Recording checked — ${fmtTime(probe.durationSec)}${probe.hasVideo ? ", video" : ", audio only"}.`);
+  await logHistory(churchId, sermonId, `Recording checked — ${fmtTime(probe.durationSec!)}${probe.hasVideo ? ", video" : ", audio only"}.`);
 }
 
 async function stageTranscribe(churchId: string, sermonId: string, sermon: DocumentData, church: ChurchDoc) {
@@ -512,7 +520,7 @@ export const renderAssetTask = onTaskDispatched<RenderPayload>(taskOpts, async (
   const dirs: string[] = [];
   try {
     if (!sermon?.media?.path) throw new Error("The original recording is no longer available.");
-    const url = await signedReadUrl(sermon.media.path, 180);
+    const mediaPath = sermon.media.path as string;
     const v = Number(asset.version || 1);
     const prefix = `churches/${churchId}/assets/${assetId}/v${v}`;
     const media: Record<string, unknown> = {};
@@ -525,7 +533,7 @@ export const renderAssetTask = onTaskDispatched<RenderPayload>(taskOpts, async (
         logoFile = path.join(tmp, path.basename(church.logoPath));
         await bucket().file(church.logoPath).download({ destination: logoFile });
       }
-      const r = await renderClip({
+      const r = await withStorageMedia(mediaPath, (url) => renderClip({
         sourceUrl: url,
         hasVideo: !!sermon.media.hasVideo,
         start: asset.source.start,
@@ -537,14 +545,14 @@ export const renderAssetTask = onTaskDispatched<RenderPayload>(taskOpts, async (
         logoPosition: (asset.content?.logoPosition as LogoPosition) || "top-right",
         background: church.brand?.primary || "#0B0D0E",
         accent: church.brand?.accent || "#2ECBBE",
-      });
+      }));
       dirs.push(r.dir);
       await bucket().upload(r.videoFile, { destination: `${prefix}.mp4`, contentType: "video/mp4" });
       await bucket().upload(r.thumbFile, { destination: `${prefix}.jpg`, contentType: "image/jpeg" });
       await bucket().file(`${prefix}.vtt`).save(buildVtt(asset.content?.cues || []), { contentType: "text/vtt" });
       Object.assign(media, { path: `${prefix}.mp4`, thumbnailPath: `${prefix}.jpg`, captionsPath: `${prefix}.vtt`, contentType: "video/mp4" });
     } else if (asset.type === "audio") {
-      const r = await renderPodcastAudio(url);
+      const r = await withStorageMedia(mediaPath, (url) => renderPodcastAudio(url));
       dirs.push(r.dir);
       await bucket().upload(r.file, { destination: `${prefix}.mp3`, contentType: "audio/mpeg" });
       Object.assign(media, { path: `${prefix}.mp3`, contentType: "audio/mpeg" });

@@ -24,28 +24,31 @@ export function runFfmpeg(args: string[], timeoutMs = 25 * 60 * 1000): Promise<{
       clearTimeout(timer);
       reject(e);
     });
-    proc.on("close", (code) => {
+    proc.on("close", (code, signal) => {
       clearTimeout(timer);
       if (code === 0) resolve({ stderr });
-      else reject(new Error(`ffmpeg exited with code ${code}: ${stderr.split("\n").slice(-6).join(" ").slice(0, 600)}`));
+      else reject(new Error(`ffmpeg ${signal ? `crashed (${signal})` : `exited with code ${code}`}: ${stderr.split("\n").slice(-6).join(" ").slice(0, 600)}`));
     });
   });
 }
 
 /** Read duration and whether the media has a video stream. */
-export async function probeMedia(url: string): Promise<{ durationSec: number | null; hasVideo: boolean }> {
+export async function probeMedia(url: string): Promise<{ durationSec: number | null; hasVideo: boolean; invalid: boolean; error: string | null }> {
   let stderr = "";
+  let error: string | null = null;
   try {
     // `-f null` with -t 0 reads only headers; ffmpeg exits 0.
     stderr = (await runFfmpeg(["-i", url, "-t", "0", "-f", "null", "-"], 120_000)).stderr;
   } catch (e) {
     stderr = String((e as Error).message);
+    error = /crashed/.test(stderr) ? "media tool crashed" : /ENOENT|not found/.test(stderr) ? "media tool missing" : null;
   }
+  const invalid = /Invalid data found|could not find codec|does not contain any stream|moov atom not found/i.test(stderr);
   const m = /Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/.exec(stderr);
   const durationSec = m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : null;
   // Ignore attached cover art (mjpeg/png in audio files).
   const hasVideo = /Stream #\d+:\d+[^\n]*: Video: (?!mjpeg|png)/.test(stderr);
-  return { durationSec, hasVideo };
+  return { durationSec, hasVideo, invalid, error };
 }
 
 export type Aspect = "9:16" | "1:1" | "16:9";
