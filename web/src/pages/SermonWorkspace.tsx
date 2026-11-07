@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import clsx from "clsx";
-import { ArrowLeft, CheckCircle2, Circle, Download, Loader2, Pencil, RotateCcw, Sparkles, Trash2, XCircle, LayoutGrid, Search, Quote, FileText, MinusCircle, UploadCloud } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, Download, Loader2, Pencil, RotateCcw, Sparkles, Trash2, XCircle, LayoutGrid, Search, Quote, FileText, MinusCircle, UploadCloud , CheckCheck } from "lucide-react";
 import { useChurch } from "../context/ChurchContext";
 import { db, storage } from "../lib/firebase";
 import { useDocData, useStorageUrl } from "../lib/hooks";
@@ -13,6 +13,7 @@ import { errMessage, fmtBytes, fmtClock, fmtDuration, fmtServiceDate } from "../
 import { parseTranscript } from "../lib/transcriptImport";
 import type { Segment, Sermon, StageName, Transcript } from "../lib/types";
 import { useFlags } from "../lib/flags";
+import { openFlagCount } from "../components/SourceReview";
 import { VIDEO_STYLES, VIDEO_STYLE_IDS, VideoStyleId } from "../components/VideoStylePicker";
 import type { Asset } from "../lib/types";
 import { Button, Card, Checkbox, EmptyState, Input, Modal, Notice, PageLoading, Tabs, Textarea, useToast } from "../components/ui";
@@ -195,8 +196,7 @@ export default function SermonWorkspace() {
       {tab === "content" && (
         sermonAssets.length ? (
           <>
-            {flags.videoStyles && can("contributor") && <ApplyStyleBar churchId={churchId} clips={sermonAssets.filter((a) => a.type === "video")} />}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{sermonAssets.map((a) => <AssetCard key={a.id} asset={a} />)}</div>
+            <ContentBoard churchId={churchId} assets={sermonAssets} showStyleBar={flags.videoStyles && can("contributor")} />
           </>
         ) : (
           <EmptyState title="No content yet">{processing ? "Content will appear here as it is generated." : "Nothing has been generated from this sermon yet."}</EmptyState>
@@ -616,5 +616,95 @@ function ApplyStyleBar({ churchId, clips }: { churchId: string; clips: Asset[] }
         Apply to {ready.length} clip{ready.length === 1 ? "" : "s"}
       </Button>
     </div>
+  );
+}
+
+type Group = "all" | "media" | "quotes" | "written";
+const GROUPS: { id: Group; label: string; match: (a: Asset) => boolean }[] = [
+  { id: "all", label: "All", match: () => true },
+  { id: "media", label: "Clips & Audio", match: (a) => a.category === "video" || a.category === "audio" },
+  { id: "quotes", label: "Quote cards", match: (a) => a.category === "graphic" },
+  { id: "written", label: "Written", match: (a) => a.category === "written" },
+];
+
+/** A sermon's generated content, grouped by format, with one-click approval of everything that's ready. */
+export function ContentBoard({ churchId, assets, showStyleBar }: { churchId: string; assets: Asset[]; showStyleBar: boolean }) {
+  const { can } = useChurch();
+  const toast = useToast();
+  const [group, setGroup] = useState<Group>("all");
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const flagged = assets.filter((a) => a.status === "needs_review" && openFlagCount(a) > 0);
+  const ready = assets.filter((a) => a.status === "needs_review" && !openFlagCount(a));
+  const firstFlagged = flagged[0];
+  const pending = assets.filter((a) => a.category === "video" && a.status === "processing" && a.render?.status !== "running").map((a) => a.id);
+  const queuePos = (a: Asset) => Math.max(0, pending.indexOf(a.id)) + (assets.some((x) => x.render?.status === "running") ? 1 : 0);
+
+  const approveAll = async () => {
+    setBusy(true);
+    try {
+      const r = await api.approveAssets({ churchId, assetIds: ready.map((a) => a.id) });
+      toast(`${r.approved.length} approved${r.skipped.length ? ` · ${r.skipped.length} skipped` : ""}`, "success");
+      setConfirm(false);
+    } catch (e) {
+      toast(errMessage(e), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const section = (g: Group, title: string, grid: string) => {
+    const list = assets.filter(GROUPS.find((x) => x.id === g)!.match);
+    if (!list.length) return null;
+    return (
+      <section key={g} className="mb-8">
+        {group === "all" && <h3 className="mb-3 text-[0.8125rem] font-semibold text-fg">{title} <span className="font-normal text-fg-muted">{list.length}</span></h3>}
+        <div className={grid}>{list.map((a) => <AssetCard key={a.id} asset={a} hideSermon queuePos={queuePos(a)} />)}</div>
+      </section>
+    );
+  };
+
+  return (
+    <>
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-gray-200">
+        <div className="min-w-0 flex-1 text-sm">
+          <span className="font-semibold text-fg">{assets.length} items generated</span>
+          <span className="text-fg-muted">
+            {ready.length ? ` · ${ready.length} ready to approve` : ""}
+            {flagged.length ? ` · ${flagged.length} need${flagged.length === 1 ? "s" : ""} verification` : ""}
+            {!ready.length && !flagged.length ? " · nothing waiting for review" : ""}
+          </span>
+        </div>
+        {firstFlagged && <Link to={`/studio/${firstFlagged.id}`} className="inline-flex h-9 items-center rounded-full px-4 text-sm font-medium text-fg ring-1 ring-gray-200 hover:bg-gray-50">Review flagged</Link>}
+        {can("editor") && ready.length > 0 && <Button size="sm" variant="accent" icon={<CheckCheck className="h-4 w-4" />} onClick={() => setConfirm(true)}>Approve {ready.length} ready</Button>}
+      </div>
+
+      <div role="tablist" aria-label="Format" className="mb-5 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-gray-200/70 p-1">
+        {GROUPS.map((g) => {
+          const n = assets.filter(g.match).length;
+          if (g.id !== "all" && !n) return null;
+          return (
+            <button key={g.id} role="tab" aria-selected={group === g.id} type="button" onClick={() => setGroup(g.id)} className={clsx("whitespace-nowrap rounded-full px-3.5 py-1.5 text-[0.8125rem] font-medium transition", group === g.id ? "bg-white text-fg shadow-card" : "text-fg-muted hover:text-fg")}>
+              {g.label} <span className="tabular-nums text-fg-muted">{n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {showStyleBar && (group === "all" || group === "media") && <ApplyStyleBar churchId={churchId} clips={assets.filter((a) => a.type === "video")} />}
+      {(group === "all" || group === "media") && section("media", "Clips & Audio", "grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}
+      {(group === "all" || group === "quotes") && section("quotes", "Quote cards", "grid grid-cols-2 gap-4 lg:grid-cols-3")}
+      {(group === "all" || group === "written") && section("written", "Written", "grid gap-4 md:grid-cols-2 xl:grid-cols-3")}
+
+      <Modal
+        open={confirm}
+        onClose={() => setConfirm(false)}
+        title={`Approve ${ready.length} item${ready.length === 1 ? "" : "s"}?`}
+        footer={<><Button variant="ghost" onClick={() => setConfirm(false)}>Cancel</Button><Button variant="accent" loading={busy} onClick={approveAll}>Approve {ready.length}</Button></>}
+      >
+        <p className="text-sm text-gray-800">Everything waiting for review that has no unchecked source points will be approved and become ready to schedule.</p>
+        {flagged.length > 0 && <p className="mt-2 text-sm text-fg-muted">{flagged.length} item{flagged.length === 1 ? "" : "s"} with points to verify will stay in review.</p>}
+      </Modal>
+    </>
   );
 }

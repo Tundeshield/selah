@@ -163,7 +163,7 @@ export interface Asset {
   transcriptExcerpt?: string;
   durationSec?: number;
   media?: { path?: string; thumbnailPath?: string; captionsPath?: string; contentType?: string } | null;
-  render?: { status: "pending" | "running" | "done" | "failed"; error?: string | null };
+  render?: { status: "pending" | "running" | "done" | "failed"; error?: string | null; startedAt?: { toMillis?: () => number } | null };
   fromAudio?: boolean;
   flags?: Flag[];
   revisionError?: string | null;

@@ -33,7 +33,7 @@ export function primaryActionLabel(a: Asset) {
   }
 }
 
-export function AssetCard({ asset, selectable, selected, onSelect }: { asset: Asset; selectable?: boolean; selected?: boolean; onSelect?: (v: boolean) => void }) {
+export function AssetCard({ asset, selectable, selected, onSelect, hideSermon, queuePos = 0 }: { asset: Asset; selectable?: boolean; selected?: boolean; onSelect?: (v: boolean) => void; hideSermon?: boolean; queuePos?: number }) {
   const typeLabel = useAssetTypeLabel(asset);
   const { churchId, church, can, canPublish } = useChurch();
   const toast = useToast();
@@ -64,6 +64,55 @@ export function AssetCard({ asset, selectable, selected, onSelect }: { asset: As
     { label: "Copy for Canva", run: async () => { await copy(canvaText(asset)); toast("Copied — paste into your Canva text boxes", "success"); } },
   ];
 
+  const selectBox = selectable && (
+    <label className="absolute right-3 top-3 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md bg-white/95 shadow-card">
+      <input type="checkbox" className="h-4 w-4" checked={!!selected} onChange={(e) => onSelect?.(e.target.checked)} aria-label={`Select ${asset.title}`} />
+    </label>
+  );
+
+  // Clip still rendering: a compact progress card instead of an empty tall preview.
+  if (asset.category === "video" && asset.status === "processing" && asset.render?.status !== "failed") {
+    return (
+      <div className="card flex flex-col gap-3 p-4">
+        <div className="flex items-center justify-between gap-2 text-xs font-medium text-fg-muted">
+          <span className="inline-flex items-center gap-1.5"><TypeIcon type={asset.type} className="h-3.5 w-3.5" />{typeLabel}</span>
+          <AssetStatusBadge asset={asset} />
+        </div>
+        <h3 className="line-clamp-2 text-[0.9375rem] font-semibold leading-snug text-fg">{asset.title}</h3>
+        <RenderProgress asset={asset} queuePos={queuePos} />
+      </div>
+    );
+  }
+
+  // Written: compact text card, one clear action.
+  if (asset.category === "written") {
+    const c = asset.content || {};
+    const scripture = c.scripture || c.scriptureReferences?.[0];
+    const preview = asset.type === "captions" ? String(Object.values(c.platforms || {})[0] || "") : c.reflection || c.body || c.introduction || c.mainTheme || "";
+    const words = cleanText(asset).split(/\s+/).filter(Boolean).length;
+    return (
+      <div className={clsx("card group relative flex flex-col p-4 transition-colors hover:border-gray-300", selected && "ring-2 ring-brand-500")}>
+        {selectBox}
+        <div className="mb-2 flex items-center justify-between gap-2 text-xs font-medium text-fg-muted">
+          <span className="inline-flex items-center gap-1.5"><TypeIcon type={asset.type} className="h-3.5 w-3.5" />{typeLabel}</span>
+          {!selectable && <AssetStatusBadge asset={asset} />}
+        </div>
+        <Link to={`/studio/${asset.id}`} className="block">
+          <h3 className="line-clamp-1 text-[0.9375rem] font-semibold text-fg">{c.title || asset.title}</h3>
+          <p className="mt-1 line-clamp-2 text-[0.8125rem] leading-relaxed text-fg-muted">{scripture && <span className="font-medium text-brand-700">{scripture} · </span>}{preview}</p>
+        </Link>
+        <div className="mt-auto flex items-center gap-2 pt-3">
+          <Link to={`/studio/${asset.id}`} className="inline-flex h-8 items-center rounded-full bg-ink px-3.5 text-xs font-semibold text-white hover:bg-black">
+            {asset.status === "needs_review" ? "Open & review" : "Open"}
+          </Link>
+          <span className="text-xs text-fg-muted">{words.toLocaleString()} words</span>
+          {toCheck > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-200"><ShieldCheck className="h-3 w-3" />{toCheck}</span>}
+          <span className="ml-auto"><ExportMenu items={exportItems} up={false} /></span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={clsx("card group relative flex flex-col overflow-hidden transition-colors hover:border-gray-300", selected && "ring-2 ring-brand-500")}>
       {selectable && (
@@ -90,9 +139,9 @@ export function AssetCard({ asset, selectable, selected, onSelect }: { asset: As
           </span>
           <AssetStatusBadge asset={asset} />
         </div>
-        <h3 className="line-clamp-2 text-[0.9375rem] font-semibold leading-snug text-fg">{asset.title}</h3>
-        <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-xs">
-          <span className="truncate text-gray-500">{asset.sermonTitle}</span>
+        {asset.category !== "graphic" && <h3 className="line-clamp-2 text-[0.9375rem] font-semibold leading-snug text-fg">{asset.title}</h3>}
+        <div className={clsx("flex items-center justify-between gap-2 text-xs", asset.category === "graphic" ? "" : "mt-auto pt-3", hideSermon && asset.category === "graphic" && !toCheck && "hidden")}>
+          <span className="truncate text-gray-500">{hideSermon ? "" : asset.sermonTitle}</span>
           {toCheck > 0 ? (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-800 ring-1 ring-amber-200">
               <ShieldCheck className="h-3 w-3" />{toCheck} to verify
@@ -116,7 +165,7 @@ function QuickBtn({ children, onClick, icon, primary, disabled }: { children: Re
   );
 }
 
-function ExportMenu({ items }: { items: { label: string; run: () => unknown }[] }) {
+function ExportMenu({ items, up = true }: { items: { label: string; run: () => unknown }[]; up?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -131,14 +180,40 @@ function ExportMenu({ items }: { items: { label: string; run: () => unknown }[] 
         <Share2 className="h-3.5 w-3.5" />
       </button>
       {open && (
-        <div role="menu" className="absolute bottom-10 right-0 z-20 w-52 overflow-hidden rounded-xl bg-white py-1 shadow-pop ring-1 ring-gray-200">
+        <div role="menu" className={clsx("absolute right-0 z-20 w-52", up ? "bottom-10" : "top-10")} >
+          <div className="overflow-hidden rounded-xl bg-white py-1 shadow-pop ring-1 ring-gray-200">
           {items.map((it) => (
             <button key={it.label} role="menuitem" type="button" onClick={() => { setOpen(false); it.run(); }} className="block w-full px-3.5 py-2.5 text-left text-sm text-fg hover:bg-gray-50">
               {it.label}
             </button>
           ))}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const RENDER_SEC = 75; // typical styled clip render, used only for an estimate
+
+/** Estimated progress. Rendering doesn't report a percentage, so this is based on elapsed time and queue position. */
+function RenderProgress({ asset, queuePos }: { asset: Asset; queuePos: number }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((x) => x + 1), 3000);
+    return () => clearInterval(t);
+  }, []);
+  const started = asset.render?.status === "running" ? asset.render.startedAt?.toMillis?.() : undefined;
+  const elapsed = started ? (Date.now() - started) / 1000 : 0;
+  const pct = started ? Math.min(92, Math.round((elapsed / RENDER_SEC) * 100)) : 4;
+  const left = started ? Math.max(10, RENDER_SEC - elapsed) : RENDER_SEC * (queuePos + 1);
+  const label = !started ? (queuePos ? `In line · about ${Math.ceil(left / 60)} min` : "Starting…") : elapsed > RENDER_SEC ? "Finishing up…" : `Rendering · about ${left < 60 ? `${Math.round(left / 10) * 10} sec` : `${Math.ceil(left / 60)} min`} left`;
+  return (
+    <div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+        <div className="h-full rounded-full bg-brand-500 transition-[width] duration-1000" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="mt-1.5 text-xs text-fg-muted">{label} <span className="text-gray-400">(estimate)</span></div>
     </div>
   );
 }
