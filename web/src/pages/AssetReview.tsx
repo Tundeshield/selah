@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { collection, orderBy, query } from "firebase/firestore";
 import clsx from "clsx";
-import { ArrowLeft, Check, CalendarPlus, Download, MessageSquareWarning, RefreshCw, Trash2, AlertTriangle, Loader2, Send, Mic2, Plus, Minus, History, Upload as UploadIcon, Shuffle } from "lucide-react";
+import { ChevronDown, MoreHorizontal, Save, ArrowLeft, Check, CalendarPlus, Download, MessageSquareWarning, RefreshCw, Trash2, AlertTriangle, Loader2, Send, Mic2, Plus, Minus, History, Upload as UploadIcon, Shuffle } from "lucide-react";
 import { useChurch } from "../context/ChurchContext";
 import { db } from "../lib/firebase";
 import { useDocData, useQueryData, useStorageUrl, useUnsavedWarning } from "../lib/hooks";
@@ -12,7 +12,9 @@ import { errMessage, fmtClock, fmtDuration, fmtRelative, tsDate } from "../lib/f
 import { GRAPHIC_SIZES, TEMPLATES, drawBackground } from "../lib/graphic";
 import { useFlags } from "../lib/flags";
 import { PhotoBackgroundPicker } from "../components/PhotoBackground";
-import { StyleGrid, VideoStyleId } from "../components/VideoStylePicker";
+import { StyleList, VideoStyleId } from "../components/VideoStylePicker";
+import { CaptionsReview } from "../components/CaptionsReview";
+import { Chips } from "../components/PhotoControls";
 import { useMediaLibrary } from "./Media";
 import type { Asset, AssetVersion, Cue, Revision, Sermon } from "../lib/types";
 import { Button, Card, Checkbox, EmptyState, Input, Modal, Notice, PageLoading, Select, Tabs, Textarea, useToast } from "../components/ui";
@@ -41,6 +43,7 @@ export default function AssetReview() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Reset the draft whenever a new version arrives (unless the user is mid-edit on the same version).
@@ -103,37 +106,49 @@ export default function AssetReview() {
 
   return (
     <>
-      <Link to="/studio" className="mb-5 inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg"><ArrowLeft className="h-4 w-4" /> Content Studio</Link>
-
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-fg-muted">
-            <span className="inline-flex items-center gap-1.5"><TypeIcon type={asset.type} className="h-3.5 w-3.5" />{typeLabel}</span>
-            <span>·</span><span>Version {asset.version}</span>
-            <AssetStatusBadge asset={asset} />
+      <div className="sticky top-0 z-30 -mx-4 mb-6 border-b border-gray-200/80 bg-[#fbfbf9]/85 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 md:-mx-10 md:-mt-10 md:mb-8 md:rounded-t-3xl md:px-10 md:pt-5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
+          <Link to="/studio" aria-label="Back to Content Studio" className="-ml-1.5 rounded-lg p-1.5 text-fg-muted hover:bg-gray-100 hover:text-fg"><ArrowLeft className="h-5 w-5" /></Link>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2 text-xs text-fg-muted">
+              <span className="inline-flex shrink-0 items-center gap-1.5 font-medium"><TypeIcon type={asset.type} className="h-3.5 w-3.5" />{typeLabel}</span>
+              <span aria-hidden>·</span>
+              <span className="min-w-0 truncate">
+                <Link className="hover:text-fg hover:underline" to={`/sermons/${asset.sermonId}`}>{asset.sermonTitle}</Link>
+                {asset.source?.start !== undefined && asset.category !== "written" ? ` · ${fmtClock(asset.source.start)}–${fmtClock(asset.source.end)}` : ""}
+              </span>
+            </div>
+            <div className="mt-0.5 flex min-w-0 items-center gap-2.5">
+              <h1 className="truncate text-lg font-semibold tracking-tight text-fg md:text-xl">{asset.title}</h1>
+              <AssetStatusBadge asset={asset} />
+              <span className="hidden shrink-0 text-xs text-fg-muted sm:inline">v{asset.version}</span>
+            </div>
           </div>
-          <h1 className="h-page line-clamp-2">{asset.title}</h1>
-          <p className="mt-2 text-sm text-fg-muted">
-            From <Link className="link" to={`/sermons/${asset.sermonId}`}>{asset.sermonTitle}</Link>
-            {asset.source?.start !== undefined && asset.category !== "written" ? ` · ${fmtClock(asset.source.start)}–${fmtClock(asset.source.end)} in the sermon` : ""}
-          </p>
+          <ActionBar
+            asset={asset}
+            busy={busy}
+            dirty={!!dirty}
+            editable={editable}
+            canApprove={can("editor")}
+            canDelete={can("editor")}
+            canPublish={canPublish}
+            approvedCurrent={approvedCurrent}
+            onSave={save}
+            onDiscard={() => setBaseVersion(null)}
+            onApprove={approve}
+            onChanges={() => setChangesOpen(true)}
+            onRegenerate={() => run("regen", () => api.requestChanges({ churchId, assetIds: [asset.id], reasons: ["regenerate"], instructions: "" }), "Regenerating a new version")}
+            onSchedule={() => setScheduleOpen(true)}
+            onPublish={() => setPublishOpen(true)}
+            onSubmit={() => run("submit", () => api.submitForReview({ churchId, assetId: asset.id }), "Submitted for review")}
+            onRetryRender={() => run("render", () => api.retryRender({ churchId, assetId: asset.id }), "Rendering again")}
+            onHistory={() => setHistoryOpen(true)}
+            onDelete={() => setDeleteOpen(true)}
+            historyCount={versions.data.length}
+            canvasRef={canvasRef}
+          />
         </div>
-        <ReviewActions
-          asset={asset}
-          busy={busy}
-          dirty={!!dirty}
-          canApprove={can("editor")}
-          canPublish={canPublish}
-          approvedCurrent={approvedCurrent}
-          onApprove={approve}
-          onChanges={() => setChangesOpen(true)}
-          onRegenerate={() => run("regen", () => api.requestChanges({ churchId, assetIds: [asset.id], reasons: ["regenerate"], instructions: "" }), "Regenerating a new version")}
-          onSchedule={() => setScheduleOpen(true)}
-          onPublish={() => setPublishOpen(true)}
-          onSubmit={() => run("submit", () => api.submitForReview({ churchId, assetId: asset.id }), "Submitted for review")}
-          onRetryRender={() => run("render", () => api.retryRender({ churchId, assetId: asset.id }), "Rendering again")}
-          canvasRef={canvasRef}
-        />
+        {dirty && <p className="mt-2 text-xs font-medium text-amber-700">{approvedCurrent ? "Unsaved changes — saving creates a new version that needs approval again." : "Unsaved changes"}</p>}
       </div>
 
       {asset.status === "changes_requested" && <div className="mb-5"><Notice tone="info" title="Revision in progress">A revised version is being prepared. The current version is preserved in the history.</Notice></div>}
@@ -151,6 +166,11 @@ export default function AssetReview() {
         </div>
       )}
 
+      {asset.type === "captions" ? (
+        <fieldset disabled={busy === "save"} className="min-w-0">
+          <CaptionsReview asset={asset} draft={draft} setDraft={setDraft} editable={editable} sermon={sermonQ.data} />
+        </fieldset>
+      ) : (
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
         {/* Preview */}
         <div className="min-w-0">
@@ -182,15 +202,7 @@ export default function AssetReview() {
                 <Input label="Title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
                 <Editor asset={asset} draft={draft} setDraft={setDraft} sermon={sermonQ.data} />
               </fieldset>
-              {editable && (
-                <div className="mt-5 flex items-center justify-between gap-3 border-t border-gray-200 pt-4">
-                  <span className="text-xs text-gray-500">{dirty ? (approvedCurrent ? "Saving creates a new version that needs approval again." : "Unsaved changes") : `Last updated ${fmtRelative(asset.updatedAt)}${asset.updatedByName ? ` by ${asset.updatedByName}` : ""}`}</span>
-                  <div className="flex gap-2">
-                    {dirty && <Button variant="ghost" size="sm" onClick={() => setBaseVersion(null)}>Discard</Button>}
-                    <Button size="sm" onClick={save} disabled={!dirty} loading={busy === "save"}>Save changes</Button>
-                  </div>
-                </div>
-              )}
+              <p className="mt-5 border-t border-gray-200 pt-3 text-xs text-gray-500">Last updated {fmtRelative(asset.updatedAt)}{asset.updatedByName ? ` by ${asset.updatedByName}` : ""}</p>
             </Card>
           )}
           {panel === "source" && (
@@ -220,14 +232,14 @@ export default function AssetReview() {
             </Card>
           )}
           {panel === "history" && <HistoryPanel versions={versions.data} revisions={revisions.data} current={asset.version} />}
-          {can("editor") && (
-            <div className="mt-4 text-right">
-              <button onClick={() => setDeleteOpen(true)} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-700"><Trash2 className="h-4 w-4" />Delete asset</button>
-            </div>
-          )}
         </div>
       </div>
 
+      )}
+
+      <Modal open={historyOpen} onClose={() => setHistoryOpen(false)} title="Version history" wide>
+        <HistoryPanel versions={versions.data} revisions={revisions.data} current={asset.version} />
+      </Modal>
       <RequestChangesModal open={changesOpen} onClose={() => setChangesOpen(false)} assetIds={[asset.id]} assetType={asset.type} />
       {scheduleOpen && <ScheduleModal open onClose={() => setScheduleOpen(false)} asset={asset} />}
       {publishOpen && <MarkPublishedModal open onClose={() => setPublishOpen(false)} asset={asset} />}
@@ -243,27 +255,69 @@ export default function AssetReview() {
   );
 }
 
-function ReviewActions(props: {
-  asset: Asset; busy: string | null; dirty: boolean; canApprove: boolean; canPublish: boolean; approvedCurrent: boolean;
-  onApprove: () => void; onChanges: () => void; onRegenerate: () => void; onSchedule: () => void; onPublish: () => void; onSubmit: () => void; onRetryRender: () => void;
+function ActionBar(props: {
+  asset: Asset; busy: string | null; dirty: boolean; editable: boolean; canApprove: boolean; canDelete: boolean; canPublish: boolean; approvedCurrent: boolean; historyCount: number;
+  onSave: () => void; onDiscard: () => void; onApprove: () => void; onChanges: () => void; onRegenerate: () => void; onSchedule: () => void; onPublish: () => void; onSubmit: () => void; onRetryRender: () => void; onHistory: () => void; onDelete: () => void;
   canvasRef: React.MutableRefObject<HTMLCanvasElement | null>;
 }) {
-  const { asset, busy } = props;
+  const { asset, busy, dirty } = props;
   const s = asset.status;
+  const canRegen = ["needs_review", "draft"].includes(s) && asset.type !== "audio";
+  const menu: { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
+  if (["needs_review", "approved", "draft"].includes(s) && asset.type !== "audio") menu.push({ label: "Request changes", icon: <MessageSquareWarning className="h-4 w-4" />, onClick: props.onChanges });
+  if (props.approvedCurrent && props.canPublish) menu.push({ label: "Mark as published", icon: <UploadIcon className="h-4 w-4" />, onClick: props.onPublish });
+  menu.push({ label: `Version history${props.historyCount ? ` (${props.historyCount})` : ""}`, icon: <History className="h-4 w-4" />, onClick: props.onHistory });
+  if (props.canDelete) menu.push({ label: "Delete", icon: <Trash2 className="h-4 w-4" />, onClick: props.onDelete, danger: true });
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {s === "draft" && <Button icon={<Send className="h-4 w-4" />} loading={busy === "submit"} disabled={props.dirty} onClick={props.onSubmit}>Submit for review</Button>}
-      {s === "needs_review" && props.canApprove && <Button icon={<Check className="h-4 w-4" />} loading={busy === "approve"} disabled={props.dirty} onClick={props.onApprove} title={props.dirty ? "Save your changes first" : undefined}>Approve</Button>}
-      {["needs_review", "approved", "draft"].includes(s) && asset.type !== "audio" && <Button variant="secondary" icon={<MessageSquareWarning className="h-4 w-4" />} onClick={props.onChanges}>Request changes</Button>}
-      {["needs_review", "draft"].includes(s) && asset.type !== "audio" && <Button variant="ghost" icon={<RefreshCw className="h-4 w-4" />} loading={busy === "regen"} onClick={props.onRegenerate}>Regenerate</Button>}
-      {(asset.render?.status === "failed" || renderStalled(asset)) && <Button icon={<RefreshCw className="h-4 w-4" />} loading={busy === "render"} onClick={props.onRetryRender}>Retry render</Button>}
-      {props.approvedCurrent && props.canPublish && (
-        <>
-          <Button icon={<CalendarPlus className="h-4 w-4" />} onClick={props.onSchedule}>Schedule</Button>
-          <Button variant="secondary" icon={<UploadIcon className="h-4 w-4" />} onClick={props.onPublish}>Mark as published</Button>
-        </>
+    <div className="flex flex-wrap items-center gap-2">
+      {props.editable && dirty && <Button variant="ghost" size="sm" onClick={props.onDiscard}>Discard</Button>}
+      {props.editable && (
+        <Button size="sm" variant={dirty ? "primary" : "secondary"} icon={<Save className="h-4 w-4" />} disabled={!dirty} loading={busy === "save"} onClick={props.onSave}>
+          {dirty ? "Save changes" : "Saved"}
+        </Button>
       )}
+      {(asset.render?.status === "failed" || renderStalled(asset)) && <Button size="sm" variant="secondary" icon={<RefreshCw className="h-4 w-4" />} loading={busy === "render"} onClick={props.onRetryRender}>Retry render</Button>}
+      {canRegen && <Button size="sm" variant="secondary" icon={<RefreshCw className="h-4 w-4" />} loading={busy === "regen"} onClick={props.onRegenerate}>Regenerate</Button>}
+      {s === "draft" && <Button size="sm" variant="accent" icon={<Send className="h-4 w-4" />} loading={busy === "submit"} disabled={dirty} onClick={props.onSubmit}>Submit for review</Button>}
+      {s === "needs_review" && props.canApprove && <Button size="sm" variant="accent" icon={<Check className="h-4 w-4" />} loading={busy === "approve"} disabled={dirty} title={dirty ? "Save your changes first" : undefined} onClick={props.onApprove}>Approve</Button>}
+      {props.approvedCurrent && props.canPublish && <Button size="sm" variant="accent" icon={<CalendarPlus className="h-4 w-4" />} onClick={props.onSchedule}>Schedule</Button>}
       <DownloadButton asset={asset} canvasRef={props.canvasRef} />
+      <MoreMenu items={menu} />
+    </div>
+  );
+}
+
+function MoreMenu({ items }: { items: { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean }[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="flex h-9 w-9 items-center justify-center rounded-full text-fg-muted ring-1 ring-gray-200 hover:bg-white hover:text-fg">
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-11 z-40 w-56 overflow-hidden rounded-xl bg-white py-1 shadow-pop ring-1 ring-gray-200">
+          {items.map((it) => (
+            <button key={it.label} role="menuitem" type="button" onClick={() => { setOpen(false); it.onClick(); }} className={clsx("flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm hover:bg-gray-50", it.danger ? "text-red-700" : "text-fg")}>
+              {it.icon}
+              {it.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -300,7 +354,7 @@ function DownloadButton({ asset, canvasRef }: { asset: Asset; canvasRef: React.M
   if (asset.category === "video" || asset.category === "audio") {
     if (!url) return null;
     return (
-      <a href={url} target="_blank" rel="noreferrer" download={`${slug(asset.title)}.${asset.category === "video" ? "mp4" : "mp3"}`} className="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-fg hover:bg-gray-50">
+      <a href={url} target="_blank" rel="noreferrer" download={`${slug(asset.title)}.${asset.category === "video" ? "mp4" : "mp3"}`} className="inline-flex h-9 items-center gap-2 rounded-full bg-white px-3.5 text-sm font-medium text-fg ring-1 ring-gray-200 hover:bg-gray-50">
         <Download className="h-4 w-4" /> Download
       </a>
     );
@@ -449,82 +503,90 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
       setDraft({ ...draft, source: { ...src, [k]: v } });
     };
     const audioOnly = sermon?.media?.hasVideo === false || !!asset.fromAudio;
+    const styled = flags.videoStyles && !!c.videoStyle;
     return (
       <>
         {flags.videoStyles && (
-          <div className="rounded-xl bg-gray-50 p-4 ring-1 ring-gray-200">
-            <div className="mb-3 flex items-baseline justify-between gap-2">
-              <span className="text-[0.94rem] font-semibold text-fg">Style</span>
-              <span className="text-xs text-fg-muted">Pick one, then save to render</span>
-            </div>
-            <StyleGrid
-              value={(c.videoStyle as VideoStyleId) || null}
-              onChange={(v) => setC(v ? { videoStyle: v, hook: c.hook ?? draft.title, endCard: c.endCard ?? true } : { videoStyle: null })}
-              bgPath={audioOnly ? (c.bgPath ? String(c.bgPath).replace(/photo\.jpg$/, "thumb.jpg") : null) : sermon?.thumbnailPath || asset.media?.thumbnailPath}
-            />
-            {c.videoStyle && (
-              <div className="mt-4 space-y-3">
-                <Input label="Hook title" hint="Shown big for the first 3 seconds so people stop scrolling. Leave empty for none." value={c.hook ?? ""} maxLength={140} onChange={(e) => setC({ hook: e.target.value })} />
-                <Checkbox checked={c.endCard !== false} onChange={(v) => setC({ endCard: v })} label="End card with church name and sermon title" />
+          <section>
+            <SectionLabel>Style</SectionLabel>
+            <StyleList value={(c.videoStyle as VideoStyleId) || null} onChange={(v) => setC(v ? { videoStyle: v, hook: c.hook ?? draft.title, endCard: c.endCard ?? true } : { videoStyle: null })} />
+            {styled && (
+              <div className="mt-3 space-y-3">
+                <Input label="Hook title" hint="Shown big for the first 3 seconds. Leave empty for none." value={c.hook ?? ""} maxLength={140} onChange={(e) => setC({ hook: e.target.value })} />
+                <Checkbox checked={c.endCard !== false} onChange={(v) => setC({ endCard: v })} label="End card with church name" />
                 {audioOnly && flags.photoEditor && <AudiogramBackground value={c.bgPath || null} onChange={(p) => setC({ bgPath: p })} />}
               </div>
             )}
-          </div>
+          </section>
         )}
-        <Textarea label="Social caption" value={c.socialCaption || ""} onChange={(e) => setC({ socialCaption: e.target.value })} rows={3} />
-        <div>
-          <span className="label">Clip timing</span>
-          <div className="grid grid-cols-2 gap-3">
-            {(["start", "end"] as const).map((k) => (
-              <div key={k} className="rounded-lg border border-gray-200 p-2.5">
-                <div className="mb-1 text-xs capitalize text-gray-500">{k}</div>
-                <div className="flex items-center justify-between gap-1">
-                  <button type="button" className="rounded p-1 hover:bg-gray-100" onClick={() => nudge(k, -1)} aria-label={`Move ${k} earlier by 1 second`}><Minus className="h-4 w-4" /></button>
-                  <span className="font-mono text-sm text-fg">{fmtClock(src[k])}</span>
-                  <button type="button" className="rounded p-1 hover:bg-gray-100" onClick={() => nudge(k, 1)} aria-label={`Move ${k} later by 1 second`}><Plus className="h-4 w-4" /></button>
-                </div>
-              </div>
-            ))}
+
+        <section>
+          <SectionLabel>Format</SectionLabel>
+          <div className="space-y-2.5">
+            <Chips value={c.aspectRatio || "9:16"} options={[{ id: "9:16", label: "Vertical" }, { id: "1:1", label: "Square" }, { id: "16:9", label: "Wide" }]} onChange={(v) => setC({ aspectRatio: v })} />
+            {!audioOnly && (
+              <Chips value={c.framing || "auto"} options={[{ id: "auto", label: "Auto framing" }, { id: "fit", label: "Whole video" }, { id: "fill", label: "Fill & crop" }]} onChange={(v) => setC({ framing: v })} />
+            )}
           </div>
-          <p className="hint">Clip length {fmtDuration(src.end - src.start)}. Changing timing re-renders the clip and re-times captions.</p>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Select label="Aspect ratio" value={c.aspectRatio} onChange={(e) => setC({ aspectRatio: e.target.value })}>
-            <option value="9:16">Vertical 9:16</option>
-            <option value="1:1">Square 1:1</option>
-            <option value="16:9">Landscape 16:9</option>
-          </Select>
-          {!(flags.videoStyles && c.videoStyle) && (
-            <Select label="Caption style" value={c.captionStyle} onChange={(e) => setC({ captionStyle: e.target.value })}>
-              <option value="clean">Clean</option>
-              <option value="bold">Bold</option>
-              <option value="boxed">Boxed</option>
-              <option value="none">No captions</option>
-            </Select>
-          )}
-          <Select label="Logo" value={c.logoPosition} onChange={(e) => setC({ logoPosition: e.target.value })}>
-            <option value="top-right">Top right</option>
-            <option value="top-left">Top left</option>
-            <option value="bottom-right">Bottom right</option>
-            <option value="bottom-left">Bottom left</option>
-            <option value="none">Hidden</option>
-          </Select>
-        </div>
-        <details className="rounded-lg border border-gray-200">
-          <summary className="cursor-pointer px-3 py-2.5 text-sm font-medium text-fg">Edit on-screen captions ({(c.cues || []).length})</summary>
-          <ol className="max-h-80 space-y-2 overflow-y-auto border-t border-gray-200 p-3">
-            {(c.cues || []).map((cue: Cue, i: number) => (
-              <li key={i} className="flex items-center gap-2">
-                <span className="w-12 shrink-0 font-mono text-[0.6875rem] text-gray-500">{fmtClock(cue.start)}</span>
-                <input
-                  className="field py-1.5"
-                  aria-label={`Caption at ${fmtClock(cue.start)}`}
-                  value={cue.text}
-                  onChange={(e) => setC({ cues: c.cues.map((x: Cue, j: number) => (j === i ? { ...x, text: e.target.value } : x)) })}
-                />
-              </li>
-            ))}
-          </ol>
+          {!audioOnly && <p className="hint">Whole video keeps the full picture over a soft blurred background. Auto picks it when the recording's shape doesn't match.</p>}
+        </section>
+
+        <section>
+          <SectionLabel>Post caption</SectionLabel>
+          <Textarea aria-label="Post caption" value={c.socialCaption || ""} onChange={(e) => setC({ socialCaption: e.target.value })} rows={3} />
+        </section>
+
+        <details className="group rounded-xl ring-1 ring-gray-200">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-fg">
+            More options
+            <ChevronDown className="h-4 w-4 text-fg-muted transition group-open:rotate-180" />
+          </summary>
+          <div className="space-y-4 border-t border-gray-200 p-4">
+            <div>
+              <span className="label">Clip timing</span>
+              <div className="grid grid-cols-2 gap-3">
+                {(["start", "end"] as const).map((k) => (
+                  <div key={k} className="rounded-lg border border-gray-200 p-2.5">
+                    <div className="mb-1 text-xs capitalize text-gray-500">{k}</div>
+                    <div className="flex items-center justify-between gap-1">
+                      <button type="button" className="rounded p-1 hover:bg-gray-100" onClick={() => nudge(k, -1)} aria-label={`Move ${k} earlier by 1 second`}><Minus className="h-4 w-4" /></button>
+                      <span className="font-mono text-sm text-fg">{fmtClock(src[k])}</span>
+                      <button type="button" className="rounded p-1 hover:bg-gray-100" onClick={() => nudge(k, 1)} aria-label={`Move ${k} later by 1 second`}><Plus className="h-4 w-4" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="hint">Length {fmtDuration(src.end - src.start)}. Changing timing re-renders the clip.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Select label="Logo" value={c.logoPosition} onChange={(e) => setC({ logoPosition: e.target.value })}>
+                <option value="top-right">Top right</option>
+                <option value="top-left">Top left</option>
+                <option value="bottom-right">Bottom right</option>
+                <option value="bottom-left">Bottom left</option>
+                <option value="none">Hidden</option>
+              </Select>
+              {!styled && (
+                <Select label="Caption look" value={c.captionStyle} onChange={(e) => setC({ captionStyle: e.target.value })}>
+                  <option value="clean">Clean</option>
+                  <option value="bold">Bold</option>
+                  <option value="boxed">Boxed</option>
+                  <option value="none">No captions</option>
+                </Select>
+              )}
+            </div>
+            <div>
+              <span className="label">On-screen captions ({(c.cues || []).length})</span>
+              <ol className="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3">
+                {(c.cues || []).map((cue: Cue, i: number) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="w-12 shrink-0 font-mono text-[0.6875rem] text-gray-500">{fmtClock(cue.start)}</span>
+                    <input className="field py-1.5" aria-label={`Caption at ${fmtClock(cue.start)}`} value={cue.text} onChange={(e) => setC({ cues: c.cues.map((x: Cue, j: number) => (j === i ? { ...x, text: e.target.value } : x)) })} />
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
         </details>
       </>
     );
@@ -720,4 +782,8 @@ function AudiogramBackground({ value, onChange }: { value: string | null; onChan
       </div>
     </div>
   );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <h3 className="mb-2 text-[0.8125rem] font-semibold text-fg">{children}</h3>;
 }

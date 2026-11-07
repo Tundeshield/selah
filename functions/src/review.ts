@@ -10,10 +10,12 @@ import { verifyQuote, windowText } from "./pipeline/integrity";
 import { refreshStatuses } from "./publishing";
 import { finalizeSermon } from "./pipeline/tasks";
 import { STYLE_IDS } from "./pipeline/styles";
+import { polishCaption, POLISH_ACTIONS } from "./pipeline/ai";
+import { ANTHROPIC_API_KEY } from "./lib/config";
 
 const opts = { region: REGION };
 
-const RENDER_KEYS = ["cues", "aspectRatio", "captionStyle", "logoPosition", "videoStyle", "hook", "endCard", "bgPath"];
+const RENDER_KEYS = ["cues", "aspectRatio", "framing", "captionStyle", "logoPosition", "videoStyle", "hook", "endCard", "bgPath"];
 const MINOR_KEYS = ["socialCaption", "title"];
 
 const s = (v: unknown, max = 20000) => (typeof v === "string" ? v.slice(0, max) : "");
@@ -65,6 +67,7 @@ function sanitizeContent(type: string, current: DocumentData, patch: Record<stri
     case "video":
       pick("socialCaption", (v) => s(v, 3000));
       pick("aspectRatio", (v) => (["9:16", "1:1", "16:9"].includes(String(v)) ? v : "9:16"));
+      pick("framing", (v) => (["fill", "fit", "auto"].includes(String(v)) ? v : "auto"));
       pick("captionStyle", (v) => (["clean", "bold", "boxed", "none"].includes(String(v)) ? v : "clean"));
       pick("logoPosition", (v) => (["top-left", "top-right", "bottom-left", "bottom-right", "none"].includes(String(v)) ? v : "top-right"));
       pick("videoStyle", (v) => ((STYLE_IDS as string[]).includes(String(v)) ? v : null));
@@ -359,4 +362,24 @@ export const deleteAsset = onCall(opts, async (req) => {
   if (finalize) await finalizeSermon(m.churchId, a.sermonId);
   await audit(m.churchId, m.uid, { type: "asset", id: assetId }, "asset.deleted", { title: a.title, type: a.type, status: a.status }, null);
   return { ok: true };
+});
+
+/** One-tap AI rewrite of one platform caption. Returns text only — nothing is saved until the user saves. */
+export const polishSocialCaption = onCall({ region: REGION, secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 60 }, async (req) => {
+  const d = (req.data || {}) as Record<string, unknown>;
+  const m = await requireMember(req, d.churchId, "contributor");
+  const assetId = str(d.assetId, "Asset", 100);
+  const action = str(d.action, "Action", 20);
+  const platform = str(d.platform, "Platform", 30);
+  const text = str(d.text, "Caption", 6000);
+  if (!POLISH_ACTIONS.includes(action)) throw new HttpsError("invalid-argument", "Unknown rewrite.");
+  const [aSnap, cSnap] = await Promise.all([assetRef(m.churchId, assetId).get(), churchRef(m.churchId).get()]);
+  if (!aSnap.exists || aSnap.data()!.type !== "captions") throw new HttpsError("not-found", "Caption set not found.");
+  const a = aSnap.data()!;
+  try {
+    const out = await polishCaption({ text, action, platform, church: cSnap.data() as never, sermon: { title: a.sermonTitle, preacher: a.preacher } });
+    return { text: out.slice(0, 6000) };
+  } catch (e) {
+    throw new HttpsError("unavailable", (e as Error).message || "Could not rewrite the caption.");
+  }
 });

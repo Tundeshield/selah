@@ -144,13 +144,14 @@ export function buildStyledAss(
   frame: { w: number; h: number },
   o: StyleOptions,
   audioOnly: boolean,
+  captionY?: number,
 ): string {
   const st = STYLES[o.id] || STYLES.bold;
   const { w, h } = frame;
   const vertical = h > w;
   const k = vertical ? 1 : h === w ? 0.9 : 0.8;
   const size = Math.round(st.size * k);
-  const posY = Math.round(h * (vertical ? st.pos : Math.min(0.84, st.pos + 0.1)));
+  const posY = Math.round(h * (captionY ?? (vertical ? st.pos : Math.min(0.84, st.pos + 0.1))));
   const hl = resolveColor(st.highlight, o)!;
   const outlineCol = "#000000";
   const hookBox = resolveColor(st.hookBox, o);

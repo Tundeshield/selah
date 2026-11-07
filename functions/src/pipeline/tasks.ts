@@ -16,7 +16,7 @@ import { categoryOf, STAGES } from "../lib/types";
 import { transcribeWithDeepgram, Word } from "./transcribe";
 import { analyseSermon, reviseContent, writeContent, AnalysisResult } from "./ai";
 import { buildCues, fmtTime, verifyQuote, verifyScripture, windowText } from "./integrity";
-import { Aspect, buildVtt, CaptionStyle, ClipRenderInput, cleanup, LogoPosition, probeMedia, renderClip, renderPodcastAudio, renderPoster } from "./render";
+import { Aspect, ASPECTS, buildVtt, CaptionStyle, ClipRenderInput, cleanup, LogoPosition, probeMedia, renderClip, renderPodcastAudio, renderPoster } from "./render";
 import { STYLE_IDS, StyleId } from "./styles";
 import { enqueue } from "./queue";
 
@@ -182,6 +182,10 @@ async function stageProbe(churchId: string, sermonId: string, sermon: DocumentDa
   });
   patch.durationSec = Math.round(probe.durationSec!);
   patch["media.hasVideo"] = probe.hasVideo;
+  if (probe.width && probe.height) {
+    patch["media.width"] = probe.width;
+    patch["media.height"] = probe.height;
+  }
   await sermonRef(churchId, sermonId).update(patch);
   await logHistory(churchId, sermonId, `Recording checked — ${fmtTime(probe.durationSec!)}${probe.hasVideo ? ", video" : ", audio only"}.`);
 }
@@ -590,20 +594,42 @@ export const renderAssetTask = onTaskDispatched<RenderPayload>(renderOpts, async
           bgImage,
         };
       }
-      const r = await withStorageMedia(mediaPath, (url) => renderClip({
+      const aspect = (asset.content?.aspectRatio as Aspect) || "9:16";
+      const r = await withStorageMedia(mediaPath, async (url) => {
+        // Framing: explicit choice, else "fit" when the source shape is far from the output shape
+        // (e.g. a landscape sermon going into a vertical clip), so nothing important is cropped off.
+        let framing = asset.content?.framing as "fill" | "fit" | undefined;
+        let sw = sermon.media.width as number | undefined;
+        let sh = sermon.media.height as number | undefined;
+        if (sermon.media.hasVideo && (!sw || !sh)) {
+          {
+            const p = await probeMedia(url).catch(() => null);
+            sw = p?.width;
+            sh = p?.height;
+            if (sw && sh) await sermonRef(churchId, asset.sermonId).update({ "media.width": sw, "media.height": sh }).catch(() => undefined);
+          }
+        }
+        if (framing !== "fill" && framing !== "fit" && sermon.media.hasVideo) {
+          const target = ASPECTS[aspect].w / ASPECTS[aspect].h;
+          framing = sw && sh && Math.abs(Math.log(sw / sh / target)) > Math.log(1.6) ? "fit" : "fill";
+        }
+        return renderClip({
+        framing,
+        sourceSize: sw && sh ? { w: sw, h: sh } : null,
         style,
         sourceUrl: url,
         hasVideo: !!sermon.media.hasVideo,
         start: asset.source.start,
         end: asset.source.end,
-        aspect: (asset.content?.aspectRatio as Aspect) || "9:16",
+        aspect,
         captionStyle: (asset.content?.captionStyle as CaptionStyle) || "clean",
         cues: asset.content?.cues || [],
         logoFile,
         logoPosition: (asset.content?.logoPosition as LogoPosition) || "top-right",
         background: church.brand?.primary || "#0B0D0E",
         accent: church.brand?.accent || "#2ECBBE",
-      }));
+        });
+      });
       dirs.push(r.dir);
       await bucket().upload(r.videoFile, { destination: `${prefix}.mp4`, contentType: "video/mp4" });
       await bucket().upload(r.thumbFile, { destination: `${prefix}.jpg`, contentType: "image/jpeg" });

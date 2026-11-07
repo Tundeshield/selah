@@ -35,7 +35,7 @@ export function runFfmpeg(args: string[], timeoutMs = 25 * 60 * 1000): Promise<{
 }
 
 /** Read duration and whether the media has a video stream. */
-export async function probeMedia(url: string): Promise<{ durationSec: number | null; hasVideo: boolean; invalid: boolean; error: string | null }> {
+export async function probeMedia(url: string): Promise<{ durationSec: number | null; hasVideo: boolean; invalid: boolean; error: string | null; width?: number; height?: number }> {
   let stderr = "";
   let error: string | null = null;
   try {
@@ -49,8 +49,14 @@ export async function probeMedia(url: string): Promise<{ durationSec: number | n
   const m = /Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/.exec(stderr);
   const durationSec = m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : null;
   // Ignore attached cover art (mjpeg/png in audio files).
-  const hasVideo = /Stream #\d+:\d+[^\n]*: Video: (?!mjpeg|png)/.test(stderr);
-  return { durationSec, hasVideo, invalid, error };
+  const vline = /Stream #\d+:\d+[^\n]*: Video: (?!mjpeg|png)[^\n]*/.exec(stderr);
+  const hasVideo = !!vline;
+  const dm = vline ? /, (\d{2,5})x(\d{2,5})[ ,\[]/.exec(vline[0]) : null;
+  let width = dm ? Number(dm[1]) : undefined;
+  let height = dm ? Number(dm[2]) : undefined;
+  // Phone videos store rotation as metadata.
+  if (width && height && /rotate\s*:\s*-?(90|270)|rotation of -?90/.test(stderr)) [width, height] = [height, width];
+  return { durationSec, hasVideo, invalid, error, width, height };
 }
 
 export type Aspect = "9:16" | "1:1" | "16:9";
@@ -128,6 +134,9 @@ export interface ClipRenderInput {
   logoPosition: LogoPosition;
   background?: string; // for audio-only sermons
   accent?: string;
+  /** fill = crop to the frame; fit = whole video over a blurred copy of itself. */
+  framing?: "fill" | "fit";
+  sourceSize?: { w: number; h: number } | null;
   /** One-click style. When set, replaces captionStyle-based captions. */
   style?: { opts: StyleOptions; words: Word[]; bgImage?: string | null } | null;
 }
@@ -150,7 +159,19 @@ export async function renderClip(input: ClipRenderInput): Promise<{ videoFile: s
   // Slow push-in: scale up over the clip and keep the centre.
   const motion = (m: number) => (m > 0 ? `,scale=w='${w}*(1+${m}*t/${dur.toFixed(2)})':h=-2:eval=frame,crop=${w}:${h}` : "");
 
-  if (input.hasVideo) {
+  // In "fit" framing, put captions in the clear area below the video.
+  let fitCaptionY: number | undefined;
+  if (input.hasVideo && input.framing === "fit" && input.sourceSize) {
+    const shown = Math.min(1, (w * input.sourceSize.h) / input.sourceSize.w / h);
+    if (shown < 0.8) fitCaptionY = Math.min(0.86, 0.5 + shown / 2 + 0.08);
+  }
+  if (input.hasVideo && input.framing === "fit") {
+    // Blurred fill behind (blurred at low resolution, which is fast), whole frame on top.
+    filters.push(`[0:v]setsar=1,fps=30,split=2[fsrc][bsrc]`);
+    filters.push(`[bsrc]scale=${Math.round(w / 6)}:${Math.round(h / 6)}:force_original_aspect_ratio=increase,crop=${Math.round(w / 6)}:${Math.round(h / 6)},boxblur=10:3,scale=${w}:${h},eq=brightness=-0.18:saturation=0.9[fbg]`);
+    filters.push(`[fsrc]scale=${w}:${h}:force_original_aspect_ratio=decrease[ffg]`);
+    filters.push(`[fbg][ffg]overlay=(W-w)/2:(H-h)/2${sty ? motion(sty.motion * 0.4) : ""}${sty?.grade ? `,${sty.grade}` : ""},setsar=1[v0]`);
+  } else if (input.hasVideo) {
     filters.push(`[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,fps=30${sty ? motion(sty.motion) : ""}${sty?.grade ? `,${sty.grade}` : ""}[v0]`);
   } else if (sty) {
     // Styled audiogram: photo (slow zoom) or a moving gradient, with a waveform.
@@ -212,7 +233,7 @@ export async function renderClip(input: ClipRenderInput): Promise<{ videoFile: s
 
   const assFile = path.join(dir, "captions.ass");
   if (sty) {
-    await fs.writeFile(assFile, buildStyledAss(input.cues, input.style!.words, input.start, dur, { w, h }, { ...input.style!.opts, accent }, !input.hasVideo));
+    await fs.writeFile(assFile, buildStyledAss(input.cues, input.style!.words, input.start, dur, { w, h }, { ...input.style!.opts, accent }, !input.hasVideo, fitCaptionY));
     filters.push(`[${v}]subtitles=${escapeFilterPath(assFile)}:fontsdir=${escapeFilterPath(FONTS_DIR)}[v2]`);
     v = "v2";
     if (endCard && input.logoFile) {

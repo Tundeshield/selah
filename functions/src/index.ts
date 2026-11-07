@@ -11,7 +11,7 @@ export {
   startProcessing, retryProcessing, importTranscript, generateMoreContent, deleteSermon,
   createQuoteGraphic, retryRender, skipRemainingRenders,
 } from "./sermons";
-export { updateAsset, submitForReview, approveAssets, requestChanges, deleteAsset } from "./review";
+export { updateAsset, submitForReview, approveAssets, requestChanges, deleteAsset, polishSocialCaption } from "./review";
 export {
   schedulePublication, updatePublication, cancelPublication, markPublished, markPublicationFailed,
 } from "./publishing";

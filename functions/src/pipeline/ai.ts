@@ -342,3 +342,31 @@ ${transcriptForPrompt(segments)}
 </transcript>`;
   return callTool<Record<string, unknown>>("record_revision", `Record the revised ${assetType}.`, schema, prompt, 8000);
 }
+
+const POLISH: Record<string, string> = {
+  shorter: "Make it noticeably shorter (about half the length) while keeping the core message.",
+  pastoral: "Make the tone warmer and more pastoral — gentle, encouraging, personal.",
+  cta: "Add one clear, natural call to action at the end (e.g. watch the full message, join us Sunday, share with someone who needs it). Keep everything else.",
+  hashtags: "Tidy the hashtags: at most 3 relevant ones at the end, none mid-sentence.",
+};
+export const POLISH_ACTIONS = Object.keys(POLISH);
+
+/** One-tap rewrite of a single social caption. Uses the fast, low-cost model. */
+export async function polishCaption(input: { text: string; action: string; platform: string; church: ChurchDoc; sermon: { title?: string; preacher?: string } }): Promise<string> {
+  const c = input.church.content || {};
+  const res = await client().messages.create({
+    model: process.env.ANTHROPIC_FAST_MODEL || "claude-haiku-5-5",
+    max_tokens: 900,
+    system: `You edit social media captions for a church (${input.church.name}). Preferred tone: ${c.tone || "warm and pastoral"}. Language: ${c.language || "English"}.
+Rules: keep any text inside quotation marks exactly as written (it is the preacher's verbatim words). Never add new quotes, scripture references, testimonies or claims. Keep scripture references that are already there. Reply with the rewritten caption only — no preamble, no quotation marks around it.`,
+    messages: [
+      {
+        role: "user",
+        content: `Platform: ${input.platform}\nSermon: ${input.sermon.title || ""}${input.sermon.preacher ? ` (${input.sermon.preacher})` : ""}\nInstruction: ${POLISH[input.action]}\n\nCaption:\n${input.text}`,
+      },
+    ],
+  });
+  const out = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
+  if (!out) throw new Error("The AI service returned an empty caption.");
+  return out.replace(/^"([\s\S]*)"$/, "$1");
+}
