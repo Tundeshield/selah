@@ -15,9 +15,23 @@ export interface GraphicSettings {
   size: "square" | "portrait" | "story" | "landscape";
   /** Varies the generated artwork; unset = derived from the quote. */
   artSeed?: number;
+  /** Quote typeface. Unset = church brand kit, then the theme's default. */
+  font?: QuoteFont;
   /** Photo background (template "photo"). */
   photo?: { path: string; mediaId?: string; edit: PhotoEdit } | null;
 }
+
+export type QuoteFont = "modern" | "serif" | "display";
+export const QUOTE_FONTS: { id: QuoteFont; label: string }[] = [
+  { id: "modern", label: "Modern sans" },
+  { id: "serif", label: "Editorial serif" },
+  { id: "display", label: "Bold display" },
+];
+const FONT_SPEC: Record<QuoteFont, { family: string; weight: number; scale: number; stretch: string; lineH: number }> = {
+  modern: { family: '"Inter Variable", Inter, sans-serif', weight: 600, scale: 0.98, stretch: "normal", lineH: 1.2 },
+  serif: { family: '"Fraunces Variable", Fraunces, Georgia, serif', weight: 500, scale: 1.08, stretch: "normal", lineH: 1.16 },
+  display: { family: '"Archivo Variable", Archivo, sans-serif', weight: 800, scale: 0.94, stretch: "expanded", lineH: 1.1 },
+};
 
 export const PHOTO_BG_EDIT: PhotoEdit = { ...DEFAULT_EDIT, overlay: "dark", overlayStyle: "full", overlayAmount: 50 };
 
@@ -33,7 +47,14 @@ type ArtFn = (ctx: CanvasRenderingContext2D, w: number, h: number, rnd: Rng, acc
 
 export interface Template {
   label: string;
-  group: "plain" | "art" | "photo";
+  group: "plain" | "art" | "photo" | "legacy";
+  /** Default typeface for the theme. */
+  font?: QuoteFont;
+  /** Scripture shown as a coloured pill. */
+  pill?: boolean;
+  /** Background comes from the church's primary colour. */
+  brandBg?: boolean;
+  blurb?: string;
   bg: string;
   fg: string;
   accent: string;
@@ -194,11 +215,11 @@ const ART: Record<string, ArtFn> = {
 
 /** Ids are stored on assets; keep old ids working. */
 export const TEMPLATES: Record<string, Template> = {
-  cream: { label: "Paper", group: "plain", bg: "#F4F4F1", fg: "#0B0D0E", accent: "#0D8D86", sub: "#57544F" },
-  forest: { label: "Ink", group: "plain", bg: "#0B0D0E", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#A8A59F" },
-  sage: { label: "Tint", group: "plain", bg: "#CCF7F0", fg: "#0B0D0E", accent: "#0F706B", sub: "#115A57" },
-  "gold-line": { label: "Frame", group: "plain", bg: "#FFFFFF", fg: "#0B0D0E", accent: "#2ECBBE", sub: "#57544F", frame: true },
-  "photo-dark": { label: "Teal", group: "plain", bg: "#2ECBBE", fg: "#0B0D0E", accent: "#0B0D0E", sub: "#052C2B" },
+  cream: { label: "Editorial", blurb: "Paper, serif, calm", group: "plain", bg: "#F5F4F0", fg: "#111314", accent: "#0D8D86", sub: "#5C5A55", font: "serif" },
+  forest: { label: "Midnight", blurb: "Charcoal, bold, accent pill", group: "plain", bg: "#141617", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#A9AEAD", font: "display", pill: true },
+  "photo-dark": { label: "Branded", blurb: "Your church colour", group: "plain", bg: "#0B3B38", fg: "#FFFFFF", accent: "#FFFFFF", sub: "rgba(255,255,255,0.78)", font: "modern", brandBg: true },
+  sage: { label: "Tint", group: "legacy", bg: "#CCF7F0", fg: "#0B0D0E", accent: "#0F706B", sub: "#115A57" },
+  "gold-line": { label: "Frame", group: "legacy", bg: "#FFFFFF", fg: "#0B0D0E", accent: "#2ECBBE", sub: "#57544F", frame: true },
   ripples: { label: "Ripples", group: "art", bg: "#0B0D0E", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#B9C2C1", art: ART.ripples },
   aurora: { label: "Aurora", group: "art", bg: "#06100F", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#C6D3D2", art: ART.aurora },
   rays: { label: "Light", group: "art", bg: "#081417", fg: "#FFFFFF", accent: "#2ECBBE", sub: "#B9C2C1", art: ART.rays },
@@ -210,10 +231,10 @@ export const TEMPLATES: Record<string, Template> = {
 };
 
 /** Paints only the background/artwork — used for the full graphic and template swatches. */
-export function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, templateId: string, accent?: string, seed = 1) {
+export function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, templateId: string, accent?: string, seed = 1, brandPrimary?: string) {
   const t = TEMPLATES[templateId] || TEMPLATES.cream;
   const a = accent || t.accent;
-  ctx.fillStyle = t.bg;
+  ctx.fillStyle = t.brandBg && brandPrimary ? brandPrimary : t.bg;
   ctx.fillRect(0, 0, w, h);
   if (t.art) {
     ctx.save();
@@ -243,88 +264,180 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string
   return lines;
 }
 
-export async function drawGraphic(
-  canvas: HTMLCanvasElement,
-  s: GraphicSettings,
-  opts: { churchName?: string; logo?: HTMLImageElement | null; brandAccent?: string; photo?: HTMLImageElement | null } = {},
-) {
+export interface DrawOpts {
+  churchName?: string;
+  logo?: HTMLImageElement | null;
+  brandAccent?: string;
+  brandPrimary?: string;
+  brandFont?: QuoteFont;
+  speaker?: string;
+  photo?: HTMLImageElement | null;
+}
+
+function luminance(hex: string) {
+  const n = parseInt((hex || "#000").replace("#", "").padEnd(6, "0").slice(0, 6), 16);
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+export async function drawGraphic(canvas: HTMLCanvasElement, s: GraphicSettings, opts: DrawOpts = {}) {
   const { w, h } = GRAPHIC_SIZES[s.size] || GRAPHIC_SIZES.square;
   const t = TEMPLATES[s.template] || TEMPLATES.cream;
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d", { willReadFrequently: s.template === "photo" })!;
+  const font = FONT_SPEC[s.font || opts.brandFont || t.font || "modern"];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ("fontStretch" in ctx) (ctx as any).fontStretch = "semi-expanded";
+  const setStretch = (v: string) => "fontStretch" in ctx && ((ctx as any).fontStretch = v);
   try {
     await Promise.all([
-      document.fonts.load(`700 64px "Archivo Variable"`),
-      document.fonts.load(`500 28px "Inter Variable"`),
+      document.fonts.load(`${font.weight} 64px ${font.family.split(",")[0]}`),
+      document.fonts.load(`600 28px "Inter Variable"`),
     ]);
   } catch {
     /* fonts optional */
   }
-  const accent = t.accent === "#2ECBBE" && opts.brandAccent ? opts.brandAccent : t.accent;
-  drawBackground(ctx, w, h, s.template, accent, s.artSeed ?? hashStr(s.quote || ""));
-  if (s.template === "photo" && opts.photo) renderPhoto(ctx, opts.photo, w, h, { ...PHOTO_BG_EDIT, ...(s.photo?.edit || {}) }, opts.brandAccent);
-  const pad = Math.round(w * 0.1);
 
-  // Quote mark
-  ctx.fillStyle = accent;
-  ctx.font = `700 ${Math.round(w * 0.16)}px "Archivo Variable", Archivo, sans-serif`;
-  ctx.textAlign = s.align === "center" ? "center" : "left";
-  const x = s.align === "center" ? w / 2 : pad;
+  // Branded: the church's primary colour; pick readable text for light brand colours.
+  let fg = t.fg;
+  let sub = t.sub;
+  let accent = t.accent === "#2ECBBE" && opts.brandAccent ? opts.brandAccent : t.accent;
+  if (t.brandBg && opts.brandPrimary && luminance(opts.brandPrimary) > 0.45) {
+    fg = "#0B0D0E";
+    sub = "rgba(11,13,14,0.72)";
+    accent = "#0B0D0E";
+  }
+
+  drawBackground(ctx, w, h, s.template, accent, s.artSeed ?? hashStr(s.quote || ""), opts.brandPrimary);
+  if (s.template === "photo" && opts.photo) renderPhoto(ctx, opts.photo, w, h, { ...PHOTO_BG_EDIT, ...(s.photo?.edit || {}) }, opts.brandAccent);
+
+  const pad = Math.round(w * 0.1);
+  const center = s.align === "center";
+  ctx.textAlign = center ? "center" : "left";
+  ctx.textBaseline = "alphabetic";
+  const x = center ? w / 2 : pad;
+  const speaker = (s.attribution || opts.speaker || "").trim();
+  const scripture = (s.scripture || "").trim();
+  const badgeOn = s.logoPosition !== "none";
 
   // Fit quote text
   const maxW = w - pad * 2;
-  let size = Math.round(w * 0.072);
+  const quote = s.quote.trim();
+  const maxH = h * (s.size === "story" ? 0.5 : s.size === "landscape" ? 0.5 : 0.54);
+  let size = Math.round(w * (s.size === "story" ? 0.092 : 0.078) * font.scale);
   let lines: string[] = [];
-  const quote = `${s.quote.trim()}`;
-  const maxH = h * (s.size === "story" ? 0.5 : 0.52);
+  setStretch(font.stretch);
   for (; size > 26; size -= 2) {
-    ctx.font = `600 ${size}px "Archivo Variable", Archivo, sans-serif`;
+    ctx.font = `${font.weight} ${size}px ${font.family}`;
     lines = wrap(ctx, quote, maxW);
-    if (lines.length * size * 1.22 <= maxH) break;
+    if (lines.length * size * font.lineH <= maxH) break;
   }
-  const lineH = size * 1.18;
+  const lineH = size * font.lineH;
   const blockH = lines.length * lineH;
-  const footerH = size * 2.6;
-  let y = (h - blockH - footerH) / 2 + size;
-  if (s.logoPosition === "top") y += h * 0.04;
+  const footSize = Math.round(w * 0.027);
+  const footerH = footSize * 3.2;
+  let y = (h - blockH - footerH) / 2;
+  if (s.logoPosition === "top") y += h * 0.03;
 
+  // Oversized quote mark
+  const markSize = Math.round(size * (t.font === "serif" || s.font === "serif" ? 2.6 : 2));
   ctx.fillStyle = accent;
-  ctx.font = `700 ${Math.round(size * 1.6)}px "Archivo Variable", Archivo, sans-serif`;
-  ctx.fillText("“", x, y - size * 0.45);
+  // Curly quote mark from the serif or display face (sans quote marks look like straight primes).
+  ctx.font = `800 ${markSize}px ${font === FONT_SPEC.serif ? font.family : FONT_SPEC.display.family}`;
+  ctx.globalAlpha = 0.9;
+  ctx.fillText("“", x, y + markSize * 0.42);
+  ctx.globalAlpha = 1;
+  y += markSize * 0.28;
 
-  ctx.fillStyle = t.fg;
-  ctx.font = `600 ${size}px "Archivo Variable", Archivo, sans-serif`;
-  lines.forEach((l, i) => ctx.fillText(l, x, y + size * 0.55 + i * lineH));
+  ctx.fillStyle = fg;
+  ctx.font = `${font.weight} ${size}px ${font.family}`;
+  lines.forEach((l, i) => ctx.fillText(l, x, y + size + i * lineH));
+  setStretch("normal");
 
-  // Rule + attribution
-  let fy = y + size * 0.55 + blockH + size * 0.6;
+  // Footer: rule, then "Speaker · Scripture"
+  let fy = y + size + (lines.length - 1) * lineH + size * 0.9;
   ctx.fillStyle = accent;
-  const ruleW = w * 0.08;
-  ctx.fillRect(s.align === "center" ? w / 2 - ruleW / 2 : pad, fy, ruleW, 3);
-  fy += size * 0.95;
-  ctx.fillStyle = t.fg;
-  ctx.font = `600 ${Math.round(w * 0.026)}px "Inter Variable", Inter, sans-serif`;
-  if (s.attribution) ctx.fillText(s.attribution, x, fy);
-  ctx.fillStyle = t.sub;
-  ctx.font = `400 ${Math.round(w * 0.022)}px "Inter Variable", Inter, sans-serif`;
-  const meta = [s.sermonTitle, s.scripture].filter(Boolean).join("  ·  ");
-  if (meta) ctx.fillText(meta, x, fy + w * 0.038);
+  const ruleW = w * 0.07;
+  ctx.fillRect(center ? w / 2 - ruleW / 2 : pad, fy, ruleW, Math.max(2, Math.round(w / 360)));
+  fy += footSize * 2.1;
+  ctx.font = `600 ${footSize}px "Inter Variable", Inter, sans-serif`;
+  if (t.pill && scripture) {
+    // Midnight: speaker text + scripture in an accent pill.
+    const sp = speaker ? `${speaker}` : "";
+    ctx.font = `600 ${footSize}px "Inter Variable", Inter, sans-serif`;
+    const spW = sp ? ctx.measureText(sp).width : 0;
+    ctx.font = `700 ${Math.round(footSize * 0.86)}px "Inter Variable", Inter, sans-serif`;
+    const pw = ctx.measureText(scripture).width + footSize * 1.3;
+    const ph = footSize * 1.7;
+    const gap = sp ? footSize * 0.8 : 0;
+    const total = spW + gap + pw;
+    let cx = center ? w / 2 - total / 2 : pad;
+    ctx.textAlign = "left";
+    if (sp) {
+      ctx.fillStyle = fg;
+      ctx.font = `600 ${footSize}px "Inter Variable", Inter, sans-serif`;
+      ctx.fillText(sp, cx, fy);
+      cx += spW + gap;
+    }
+    ctx.fillStyle = accent;
+    roundRect(ctx, cx, fy - ph * 0.72, pw, ph, ph / 2);
+    ctx.fill();
+    ctx.fillStyle = luminance(accent.startsWith("#") ? accent : "#2ECBBE") > 0.4 ? "#0B0D0E" : "#FFFFFF";
+    ctx.font = `700 ${Math.round(footSize * 0.86)}px "Inter Variable", Inter, sans-serif`;
+    ctx.fillText(scripture, cx + footSize * 0.65, fy);
+    ctx.textAlign = center ? "center" : "left";
+  } else {
+    const parts = [speaker, scripture].filter(Boolean);
+    if (parts.length) {
+      ctx.fillStyle = fg;
+      ctx.fillText(parts.join("  ·  "), x, fy);
+    }
+  }
 
-  // Logo / church name
-  if (s.logoPosition !== "none") {
-    const ly = s.logoPosition === "top" ? pad * 0.75 : h - pad * 0.75;
+  // Church badge: logo, or the church name in a quiet outlined pill.
+  if (badgeOn) {
+    const corner = t.brandBg; // Branded: watermark in the bottom corner
+    const top = s.logoPosition === "top";
+    const by = top ? pad * 0.62 : h - pad * 0.62;
     if (opts.logo && opts.logo.complete && opts.logo.naturalWidth) {
-      const lh = Math.round(w * 0.06);
+      const lh = Math.round(w * (corner ? 0.05 : 0.055));
       const lw = (opts.logo.naturalWidth / opts.logo.naturalHeight) * lh;
-      const lx = s.align === "center" ? w / 2 - lw / 2 : pad;
-      ctx.drawImage(opts.logo, lx, s.logoPosition === "top" ? ly - lh / 2 : ly - lh / 2, lw, lh);
+      const lx = corner ? w - pad * 0.6 - lw : center ? w / 2 - lw / 2 : pad;
+      ctx.globalAlpha = corner ? 0.85 : 1;
+      ctx.drawImage(opts.logo, lx, by - lh / 2, lw, lh);
+      ctx.globalAlpha = 1;
     } else if (opts.churchName) {
-      ctx.fillStyle = t.sub;
-      ctx.font = `600 ${Math.round(w * 0.02)}px "Inter Variable", Inter, sans-serif`;
-      ctx.fillText(opts.churchName.toUpperCase(), x, ly + w * 0.007);
+      const bs = Math.round(w * 0.0185);
+      ctx.font = `700 ${bs}px "Inter Variable", Inter, sans-serif`;
+      const label = opts.churchName.toUpperCase();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ("letterSpacing" in ctx) (ctx as any).letterSpacing = `${Math.round(bs * 0.12)}px`;
+      const tw = ctx.measureText(label).width;
+      const bw = tw + bs * 2.2;
+      const bh = bs * 2.3;
+      const bx = corner ? w - pad * 0.6 - bw : center ? w / 2 - bw / 2 : pad;
+      ctx.strokeStyle = sub;
+      ctx.lineWidth = Math.max(1.5, w / 700);
+      roundRect(ctx, bx, by - bh / 2, bw, bh, bh / 2);
+      ctx.stroke();
+      ctx.fillStyle = sub;
+      ctx.textAlign = "left";
+      ctx.fillText(label, bx + bs * 1.1, by + bs * 0.36);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ("letterSpacing" in ctx) (ctx as any).letterSpacing = "0px";
     }
   }
 }

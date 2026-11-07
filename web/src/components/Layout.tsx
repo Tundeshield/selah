@@ -13,12 +13,12 @@ import { fmtRelative } from "../lib/format";
 import { TextSizeControl } from "./TextSizeControl";
 
 const NAV = [
-  { to: "/", label: "Overview", short: "Overview", icon: Home, end: true },
+  { to: "/", label: "Home", short: "Home", icon: Home, end: true },
   { to: "/sermons", label: "Sermons", short: "Sermons", icon: Mic2 },
-  { to: "/studio", label: "Content Studio", short: "Studio", icon: LayoutGrid },
+  { to: "/studio", label: "Content", short: "Content", icon: LayoutGrid },
   { to: "/media", label: "Media", short: "Media", icon: Images, flag: "photoEditor" as const },
-  { to: "/calendar", label: "Publishing Calendar", short: "Calendar", icon: CalendarDays },
-  { to: "/settings", label: "Church Settings", short: "Settings", icon: Settings },
+  { to: "/calendar", label: "Calendar", short: "Calendar", icon: CalendarDays },
+  { to: "/settings", label: "Settings", short: "Settings", icon: Settings },
 ];
 
 function initialsOf(s: string) {

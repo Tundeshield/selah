@@ -72,7 +72,7 @@ export function ScheduleModal({ open, onClose, asset, publication, initialDate }
               {approved.map((a) => <option key={a.id} value={a.id}>{a.title} — {a.sermonTitle}</option>)}
             </Select>
           ) : (
-            <Notice tone="info">Only approved content can be scheduled. Approve assets in the Content Studio first.</Notice>
+            <Notice tone="info">Only approved content can be scheduled. Approve assets on the Content page first.</Notice>
           )
         )}
         <Select label="Platform" value={platform} onChange={(e) => { setPlatform(e.target.value); if (!publication) setCaption(defaultCaption(chosen, e.target.value)); }}>

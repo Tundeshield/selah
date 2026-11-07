@@ -89,6 +89,7 @@ function sanitizeContent(type: string, current: DocumentData, patch: Record<stri
       for (const k of ["quote", "attribution", "sermonTitle", "scripture"]) pick(k, (v) => s(v, 600));
       pick("template", (v) => (/^[a-z][a-z-]{1,23}$/.test(String(v)) ? v : "cream"));
       pick("photo", (v) => sanitizePhoto(v, churchId));
+      pick("font", (v) => (["modern", "serif", "display"].includes(String(v)) ? v : null));
       pick("artSeed", (v) => (Number.isFinite(Number(v)) ? Math.abs(Math.floor(Number(v))) % 1e9 : 1));
       pick("align", (v) => (["left", "center"].includes(String(v)) ? v : "center"));
       pick("logoPosition", (v) => (["top", "bottom", "none"].includes(String(v)) ? v : "bottom"));
@@ -382,4 +383,26 @@ export const polishSocialCaption = onCall({ region: REGION, secrets: [ANTHROPIC_
   } catch (e) {
     throw new HttpsError("unavailable", (e as Error).message || "Could not rewrite the caption.");
   }
+});
+
+/** Mark one "please check" point as verified against the recording (or un-mark it). */
+export const checkAssetFlag = onCall(opts, async (req) => {
+  const d = (req.data || {}) as Record<string, unknown>;
+  const m = await requireMember(req, d.churchId, "contributor");
+  const assetId = str(d.assetId, "Asset", 100);
+  const index = Number(d.index);
+  const checked = d.checked === true;
+  const ref = assetRef(m.churchId, assetId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError("not-found", "Asset not found.");
+    const flags = [...((snap.data()!.flags || []) as AssetFlag[])];
+    if (!Number.isInteger(index) || index < 0 || index >= flags.length) throw new HttpsError("invalid-argument", "Unknown item.");
+    flags[index] = checked
+      ? { ...flags[index], checked: true, checkedBy: m.uid, checkedByName: m.name }
+      : { code: flags[index].code, message: flags[index].message, ...(flags[index].segment !== undefined ? { segment: flags[index].segment } : {}), ...(flags[index].at !== undefined ? { at: flags[index].at } : {}) };
+    tx.update(ref, { flags, flagsOpen: flags.filter((f) => !f.checked).length });
+  });
+  await audit(m.churchId, m.uid, { type: "asset", id: assetId }, checked ? "asset.flag_checked" : "asset.flag_unchecked", { index });
+  return { ok: true };
 });

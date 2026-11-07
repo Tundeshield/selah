@@ -34,6 +34,7 @@ export interface Church {
     font?: string;
     logoPlacement?: string;
     captionStyle?: string;
+    quoteFont?: string;
     videoStyle?: string;
     graphicTemplate?: string;
   };
@@ -136,6 +137,11 @@ export interface Cue {
 export interface Flag {
   code: string;
   message: string;
+  segment?: number;
+  at?: number;
+  checked?: boolean;
+  checkedBy?: string;
+  checkedByName?: string;
 }
 
 export interface Asset {
@@ -237,3 +243,5 @@ export interface MediaItem {
   text?: import("./photo").PhotoText;
   outputSize?: string;
 }
+
+export type AssetFlag = Flag;

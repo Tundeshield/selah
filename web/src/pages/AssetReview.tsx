@@ -2,18 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { collection, orderBy, query } from "firebase/firestore";
 import clsx from "clsx";
-import { ChevronDown, MoreHorizontal, Save, ArrowLeft, Check, CalendarPlus, Download, MessageSquareWarning, RefreshCw, Trash2, AlertTriangle, Loader2, Send, Mic2, Plus, Minus, History, Upload as UploadIcon, Shuffle } from "lucide-react";
+import { Copy, ChevronDown, MoreHorizontal, Save, ArrowLeft, Check, CalendarPlus, Download, MessageSquareWarning, RefreshCw, Trash2, AlertTriangle, Loader2, Send, Mic2, Plus, Minus, History, Upload as UploadIcon, Shuffle } from "lucide-react";
 import { useChurch } from "../context/ChurchContext";
 import { db } from "../lib/firebase";
 import { useDocData, useQueryData, useStorageUrl, useUnsavedWarning } from "../lib/hooks";
 import { api } from "../lib/api";
 import { ASSET_TYPE, assetTypeLabel, platformLabel } from "../lib/constants";
 import { errMessage, fmtClock, fmtDuration, fmtRelative, tsDate } from "../lib/format";
-import { GRAPHIC_SIZES, TEMPLATES, drawBackground } from "../lib/graphic";
+import { QUOTE_FONTS, TEMPLATES, drawBackground } from "../lib/graphic";
 import { useFlags } from "../lib/flags";
 import { PhotoBackgroundPicker } from "../components/PhotoBackground";
 import { StyleList, VideoStyleId } from "../components/VideoStylePicker";
 import { CaptionsReview } from "../components/CaptionsReview";
+import { canvaText, cleanText, copy } from "../lib/exportText";
+import { SourceReviewBanner, SourceReviewModal, openFlagCount } from "../components/SourceReview";
 import { Chips } from "../components/PhotoControls";
 import { useMediaLibrary } from "./Media";
 import type { Asset, AssetVersion, Cue, Revision, Sermon } from "../lib/types";
@@ -44,6 +46,7 @@ export default function AssetReview() {
   const [publishOpen, setPublishOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [sourceOpen, setSourceOpen] = useState<false | "review" | "approve">(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Reset the draft whenever a new version arrives (unless the user is mid-edit on the same version).
@@ -67,7 +70,7 @@ export default function AssetReview() {
 
   if (assetQ.loading) return <PageLoading />;
   if (!asset || !draft) {
-    return <EmptyState title="Asset not found" action={<Button onClick={() => navigate("/studio")}>Back to Content Studio</Button>}>It may have been deleted.</EmptyState>;
+    return <EmptyState title="Content not found" action={<Button onClick={() => navigate("/studio")}>Back to Content</Button>}>It may have been deleted.</EmptyState>;
   }
 
   const typeLabel = assetTypeLabel({ type: asset.type, fromAudio: asset.fromAudio ?? (asset.type === "video" && sermonQ.data ? sermonQ.data.media?.hasVideo === false || (sermonQ.data.media?.hasVideo === undefined && sermonQ.data.media?.kind === "audio") : false) });
@@ -102,13 +105,15 @@ export default function AssetReview() {
     });
   }
 
-  const approve = () => run("approve", () => api.approveAssets({ churchId, assetIds: [asset.id] }).then((r) => { if (!r.approved.length) throw new Error(r.skipped[0]?.reason || "Could not approve"); }), "Approved");
+  const doApprove = () => run("approve", () => api.approveAssets({ churchId, assetIds: [asset.id] }).then((r) => { if (!r.approved.length) throw new Error(r.skipped[0]?.reason || "Could not approve"); }), "Approved");
+  // Approving with unchecked source points: show them first, with an explicit "approve anyway".
+  const approve = () => (openFlagCount(asset) ? setSourceOpen("approve") : doApprove());
 
   return (
     <>
       <div className="sticky top-0 z-30 -mx-4 mb-6 border-b border-gray-200/80 bg-[#fbfbf9]/85 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 md:-mx-10 md:-mt-10 md:mb-8 md:rounded-t-3xl md:px-10 md:pt-5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
-          <Link to="/studio" aria-label="Back to Content Studio" className="-ml-1.5 rounded-lg p-1.5 text-fg-muted hover:bg-gray-100 hover:text-fg"><ArrowLeft className="h-5 w-5" /></Link>
+          <Link to="/studio" aria-label="Back to Content" className="-ml-1.5 rounded-lg p-1.5 text-fg-muted hover:bg-gray-100 hover:text-fg"><ArrowLeft className="h-5 w-5" /></Link>
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-2 text-xs text-fg-muted">
               <span className="inline-flex shrink-0 items-center gap-1.5 font-medium"><TypeIcon type={asset.type} className="h-3.5 w-3.5" />{typeLabel}</span>
@@ -144,6 +149,7 @@ export default function AssetReview() {
             onRetryRender={() => run("render", () => api.retryRender({ churchId, assetId: asset.id }), "Rendering again")}
             onHistory={() => setHistoryOpen(true)}
             onDelete={() => setDeleteOpen(true)}
+            onCopied={() => toast("Copied")}
             historyCount={versions.data.length}
             canvasRef={canvasRef}
           />
@@ -158,13 +164,7 @@ export default function AssetReview() {
       {!approvedCurrent && (asset.approvedVersion || 0) > 0 && asset.status === "needs_review" && (
         <div className="mb-5"><Notice tone="warn" title="Needs approval again">This asset was edited after it was approved. {assetPubs.some((p) => p.status === "scheduled") && "Its scheduled posts are on hold until the new version is approved."}</Notice></div>
       )}
-      {!!asset.flags?.length && (
-        <div className="mb-5">
-          <Notice tone="warn" title="Please check before approving">
-            <ul className="mt-1 list-disc space-y-0.5 pl-4">{asset.flags.map((f, i) => <li key={i}>{f.message}</li>)}</ul>
-          </Notice>
-        </div>
-      )}
+      <SourceReviewBanner asset={asset} onOpen={() => setSourceOpen("review")} />
 
       {asset.type === "captions" ? (
         <fieldset disabled={busy === "save"} className="min-w-0">
@@ -237,6 +237,23 @@ export default function AssetReview() {
 
       )}
 
+      <SourceReviewModal
+        asset={asset}
+        sermon={sermonQ.data}
+        open={!!sourceOpen}
+        onClose={() => setSourceOpen(false)}
+        footer={
+          sourceOpen === "approve" ? (
+            <>
+              <span className="mr-auto text-xs text-fg-muted">{openFlagCount(asset) ? `${openFlagCount(asset)} point(s) not checked yet.` : "All points checked."}</span>
+              <Button variant="ghost" onClick={() => setSourceOpen(false)}>Cancel</Button>
+              <Button variant="accent" icon={<Check className="h-4 w-4" />} loading={busy === "approve"} onClick={() => { setSourceOpen(false); doApprove(); }}>{openFlagCount(asset) ? "Approve anyway" : "Approve"}</Button>
+            </>
+          ) : (
+            <Button onClick={() => setSourceOpen(false)}>Done</Button>
+          )
+        }
+      />
       <Modal open={historyOpen} onClose={() => setHistoryOpen(false)} title="Version history" wide>
         <HistoryPanel versions={versions.data} revisions={revisions.data} current={asset.version} />
       </Modal>
@@ -257,7 +274,7 @@ export default function AssetReview() {
 
 function ActionBar(props: {
   asset: Asset; busy: string | null; dirty: boolean; editable: boolean; canApprove: boolean; canDelete: boolean; canPublish: boolean; approvedCurrent: boolean; historyCount: number;
-  onSave: () => void; onDiscard: () => void; onApprove: () => void; onChanges: () => void; onRegenerate: () => void; onSchedule: () => void; onPublish: () => void; onSubmit: () => void; onRetryRender: () => void; onHistory: () => void; onDelete: () => void;
+  onSave: () => void; onDiscard: () => void; onApprove: () => void; onChanges: () => void; onRegenerate: () => void; onSchedule: () => void; onPublish: () => void; onSubmit: () => void; onRetryRender: () => void; onHistory: () => void; onDelete: () => void; onCopied: () => void;
   canvasRef: React.MutableRefObject<HTMLCanvasElement | null>;
 }) {
   const { asset, busy, dirty } = props;
@@ -266,6 +283,10 @@ function ActionBar(props: {
   const menu: { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
   if (["needs_review", "approved", "draft"].includes(s) && asset.type !== "audio") menu.push({ label: "Request changes", icon: <MessageSquareWarning className="h-4 w-4" />, onClick: props.onChanges });
   if (props.approvedCurrent && props.canPublish) menu.push({ label: "Mark as published", icon: <UploadIcon className="h-4 w-4" />, onClick: props.onPublish });
+  if (asset.category === "graphic" || asset.category === "written") {
+    menu.push({ label: asset.type === "graphic" ? "Copy quote & scripture" : "Copy clean text", icon: <Copy className="h-4 w-4" />, onClick: () => copy(cleanText(asset)).then(() => props.onCopied()) });
+    menu.push({ label: "Copy for Canva", icon: <Copy className="h-4 w-4" />, onClick: () => copy(canvaText(asset)).then(() => props.onCopied()) });
+  }
   menu.push({ label: `Version history${props.historyCount ? ` (${props.historyCount})` : ""}`, icon: <History className="h-4 w-4" />, onClick: props.onHistory });
   if (props.canDelete) menu.push({ label: "Delete", icon: <Trash2 className="h-4 w-4" />, onClick: props.onDelete, danger: true });
 
@@ -409,7 +430,7 @@ function Preview({ asset, draft, canvasRef, sermon }: { asset: Asset; draft: { t
     return (
       <Card className="flex justify-center bg-gray-100 p-4 sm:p-8">
         <div className={clsx("w-full shadow-pop", draft.content.size === "story" ? "max-w-[340px]" : draft.content.size === "landscape" ? "max-w-full" : "max-w-[520px]")}>
-          <GraphicCanvas settings={draft.content} canvasRef={canvasRef} />
+          <GraphicCanvas settings={draft.content} canvasRef={canvasRef} speaker={asset.preacher} />
         </div>
       </Card>
     );
@@ -492,7 +513,8 @@ type Draft = { title: string; content: any; source?: { start: number; end: numbe
 function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft; setDraft: (d: Draft) => void; sermon: Sermon | null }) {
   const c = draft.content;
   const setC = (patch: Record<string, unknown>) => setDraft({ ...draft, content: { ...c, ...patch } });
-  const brandAccent = useChurch().church?.brand?.accent;
+  const church = useChurch().church;
+  const brandAccent = church?.brand?.accent;
   const flags = useFlags();
 
   if (asset.type === "video") {
@@ -593,60 +615,76 @@ function Editor({ asset, draft, setDraft, sermon }: { asset: Asset; draft: Draft
   }
 
   if (asset.type === "graphic") {
+    const legacy = TEMPLATES[c.template]?.group === "legacy";
+    const brand = church?.brand;
+    const swatch = (id: string) => {
+      const t = TEMPLATES[id];
+      const sel = c.template === id;
+      return (
+        <button key={id} type="button" onClick={() => setC({ template: id })} className="group text-left" aria-label={t.label} aria-pressed={sel}>
+          <TemplateSwatch id={id} accent={brandAccent} primary={brand?.primary} selected={sel} />
+          <span className={clsx("mt-1.5 block truncate text-[0.75rem]", sel ? "font-semibold text-fg" : "font-medium text-fg")}>{t.label}</span>
+          {t.blurb && <span className="block truncate text-[0.6875rem] text-fg-muted">{t.blurb}</span>}
+        </button>
+      );
+    };
     return (
       <>
-        <Textarea label="Quote text" value={c.quote} onChange={(e) => setC({ quote: e.target.value })} rows={4} hint="Keep the preacher's exact words. Edited quotes are flagged if they no longer match the transcript." />
+        <Textarea label="Quote" value={c.quote} onChange={(e) => setC({ quote: e.target.value })} rows={3} hint="Keep the preacher's exact words — edited quotes are flagged if they no longer match the transcript." />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Attribution" value={c.attribution || ""} onChange={(e) => setC({ attribution: e.target.value })} />
-          <Input label="Scripture reference" value={c.scripture || ""} onChange={(e) => setC({ scripture: e.target.value })} />
+          <Input label="Speaker" placeholder={asset.preacher || "Pastor's name"} value={c.attribution || ""} onChange={(e) => setC({ attribution: e.target.value })} />
+          <Input label="Scripture" placeholder="e.g. Romans 14:23" value={c.scripture || ""} onChange={(e) => setC({ scripture: e.target.value })} />
         </div>
-        <div>
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <span className="label mb-0">Design</span>
-            {TEMPLATES[c.template]?.art && (
-              <button type="button" className="inline-flex items-center gap-1.5 text-xs font-medium text-fg hover:text-brand-600" onClick={() => setC({ artSeed: Math.floor(Math.random() * 1e9) })}>
-                <Shuffle className="h-3.5 w-3.5" />New variation
-              </button>
-            )}
+
+        <section>
+          <SectionLabel>Theme</SectionLabel>
+          <div className="grid grid-cols-3 gap-3">
+            {Object.keys(TEMPLATES).filter((id) => TEMPLATES[id].group === "plain").map(swatch)}
           </div>
-          {flags.photoEditor && (
-            <div className="mb-3">
-              <div className="mb-1.5 text-xs text-fg-muted">Your photos</div>
-              <PhotoBackgroundPicker
-                active={c.template === "photo"}
-                value={c.photo || null}
-                onChange={(photo) => setC(photo ? { template: "photo", photo } : { template: "forest", photo: null })}
-              />
-            </div>
-          )}
-          {(["art", "plain"] as const).map((g) => (
-            <div key={g} className="mb-3">
-              <div className="mb-1.5 text-xs text-fg-muted">{g === "art" ? "Artwork" : "Plain"}</div>
+          {legacy && <p className="hint">This graphic uses an older design ({TEMPLATES[c.template].label}). Pick a theme above to update it.</p>}
+          <details className="group mt-3" open={!!TEMPLATES[c.template]?.art || c.template === "photo"}>
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-fg-muted hover:text-fg">
+              <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" />Artwork{flags.photoEditor ? " & photo" : ""} backgrounds
+            </summary>
+            <div className="mt-3 space-y-3">
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-                {Object.entries(TEMPLATES).filter(([, t]) => t.group === g).map(([id, t]) => (
+                {Object.entries(TEMPLATES).filter(([, t]) => t.group === "art").map(([id, t]) => (
                   <button key={id} type="button" onClick={() => setC({ template: id })} className="group text-center" aria-label={t.label} aria-pressed={c.template === id}>
                     <TemplateSwatch id={id} accent={brandAccent} selected={c.template === id} />
                     <span className={clsx("mt-1 block truncate text-[0.6875rem]", c.template === id ? "font-semibold text-fg" : "text-fg-muted")}>{t.label}</span>
                   </button>
                 ))}
               </div>
+              {TEMPLATES[c.template]?.art && (
+                <button type="button" className="inline-flex items-center gap-1.5 text-xs font-medium text-fg hover:text-brand-600" onClick={() => setC({ artSeed: Math.floor(Math.random() * 1e9) })}>
+                  <Shuffle className="h-3.5 w-3.5" />New variation
+                </button>
+              )}
+              {flags.photoEditor && <PhotoBackgroundPicker active={c.template === "photo"} value={c.photo || null} onChange={(photo) => setC(photo ? { template: "photo", photo } : { template: "forest", photo: null })} />}
             </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Select label="Size" value={c.size} onChange={(e) => setC({ size: e.target.value })}>
-            {Object.entries(GRAPHIC_SIZES).map(([id, s]) => <option key={id} value={id}>{s.label}</option>)}
-          </Select>
-          <Select label="Alignment" value={c.align} onChange={(e) => setC({ align: e.target.value })}>
-            <option value="center">Centre</option>
-            <option value="left">Left</option>
-          </Select>
-          <Select label="Logo" value={c.logoPosition} onChange={(e) => setC({ logoPosition: e.target.value })}>
-            <option value="bottom">Bottom</option>
-            <option value="top">Top</option>
-            <option value="none">Hidden</option>
-          </Select>
-        </div>
+          </details>
+        </section>
+
+        <section className="space-y-3">
+          <div>
+            <SectionLabel>Typeface</SectionLabel>
+            <Chips value={c.font || "brand"} options={[{ id: "brand", label: "Brand kit" }, ...QUOTE_FONTS]} onChange={(v) => setC({ font: v === "brand" ? null : v })} />
+          </div>
+          <div>
+            <SectionLabel>Size</SectionLabel>
+            <Chips value={c.size || "square"} options={[{ id: "square", label: "Square · feed" }, { id: "portrait", label: "Portrait · feed" }, { id: "story", label: "Vertical · Stories & Status" }, ...(c.size === "landscape" ? [{ id: "landscape", label: "Wide" }] : [])]} onChange={(v) => setC({ size: v })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <SectionLabel>Align</SectionLabel>
+              <Chips value={c.align || "center"} options={[{ id: "center", label: "Centre" }, { id: "left", label: "Left" }]} onChange={(v) => setC({ align: v })} />
+            </div>
+            <div>
+              <SectionLabel>Church badge</SectionLabel>
+              <Chips value={c.logoPosition || "bottom"} options={[{ id: "bottom", label: "Bottom" }, { id: "top", label: "Top" }, { id: "none", label: "Off" }]} onChange={(v) => setC({ logoPosition: v })} />
+            </div>
+          </div>
+        </section>
       </>
     );
   }
@@ -748,7 +786,7 @@ function VersionMedia({ path }: { path: string }) {
   return <a href={url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-medium text-fg underline underline-offset-2">Open this version's file</a>;
 }
 
-function TemplateSwatch({ id, accent, selected }: { id: string; accent?: string; selected: boolean }) {
+function TemplateSwatch({ id, accent, primary, selected }: { id: string; accent?: string; primary?: string; selected: boolean }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     const cv = ref.current;
@@ -757,12 +795,12 @@ function TemplateSwatch({ id, accent, selected }: { id: string; accent?: string;
     cv.height = 160;
     const ctx = cv.getContext("2d")!;
     const t = TEMPLATES[id];
-    drawBackground(ctx, 160, 160, id, t.accent === "#2ECBBE" && accent ? accent : t.accent, 7);
-    ctx.fillStyle = t.fg;
+    drawBackground(ctx, 160, 160, id, t.accent === "#2ECBBE" && accent ? accent : t.accent, 7, primary);
+    ctx.fillStyle = t.brandBg ? "#FFFFFF" : t.fg;
     ctx.font = '700 64px "Archivo Variable", Archivo, sans-serif';
     ctx.textAlign = "center";
     ctx.fillText("“", 80, 112);
-  }, [id, accent]);
+  }, [id, accent, primary]);
   return <canvas ref={ref} className={clsx("aspect-square w-full rounded-lg ring-1 ring-black/10 transition", selected ? "outline outline-2 outline-offset-2 outline-brand-500" : "group-hover:ring-black/30")} />;
 }
 

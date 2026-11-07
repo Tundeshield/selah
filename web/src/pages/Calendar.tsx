@@ -149,7 +149,7 @@ export default function Calendar() {
       {view === "upcoming" && (
         <Card className="divide-y divide-gray-200">
           {upcoming.length === 0 ? (
-            <p className="p-6 text-sm text-fg-muted">Nothing scheduled. Approve content in the <Link className="link" to="/studio">Content Studio</Link> and schedule it here.</p>
+            <p className="p-6 text-sm text-fg-muted">Nothing scheduled. Approve content on the <Link className="link" to="/studio">Content</Link> page and schedule it here.</p>
           ) : (
             upcoming.map((p) => {
               const d = tsDate(p.scheduledAt)!;

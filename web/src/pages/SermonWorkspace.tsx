@@ -91,7 +91,7 @@ export default function SermonWorkspace() {
         </div>
         <div className="flex flex-wrap gap-2">
           {can("contributor") && <Button variant="secondary" size="sm" icon={<Pencil className="h-4 w-4" />} onClick={() => setEditOpen(true)}>Edit details</Button>}
-          {sermonAssets.length > 0 && <Button variant="secondary" size="sm" icon={<LayoutGrid className="h-4 w-4" />} onClick={() => navigate(`/studio?sermon=${sermon.id}`)}>Open in Content Studio</Button>}
+          {sermonAssets.length > 0 && <Button variant="secondary" size="sm" icon={<LayoutGrid className="h-4 w-4" />} onClick={() => navigate(`/studio?sermon=${sermon.id}`)}>Open in Content</Button>}
           {can("contributor") && ["ready", "published"].includes(sermon.status) && <Button variant="secondary" size="sm" icon={<Sparkles className="h-4 w-4" />} onClick={() => setMoreOpen(true)}>Generate more</Button>}
           {mediaUrl.url && <a href={mediaUrl.url} download={sermon.media?.fileName} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-[0.8125rem] font-medium text-fg hover:bg-gray-50"><Download className="h-4 w-4" />Original</a>}
           {can("editor") && <Button variant="ghost" size="sm" icon={<Trash2 className="h-4 w-4" />} onClick={() => setDeleteOpen(true)} aria-label="Delete sermon">Delete</Button>}

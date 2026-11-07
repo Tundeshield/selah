@@ -20,7 +20,9 @@ import { Aspect, ASPECTS, buildVtt, CaptionStyle, ClipRenderInput, cleanup, Logo
 import { STYLE_IDS, StyleId } from "./styles";
 import { enqueue } from "./queue";
 
-export const MAX_CLIPS = 4;
+/** The weekly "sermon pack": a focused set of strong pieces beats a pile to review. */
+export const MAX_CLIPS = 3;
+export const MAX_QUOTES = 3;
 
 const taskOpts = {
   region: REGION,
@@ -279,7 +281,8 @@ async function stageGenerate(churchId: string, sermonId: string, church: ChurchD
   const sermon = sSnap.data()!;
   const { segments, hasTimestamps, words } = await loadTranscript(churchId, sermonId);
   const prefs = church.content || {};
-  const wanted = new Set(only?.length ? only : prefs.contentTypes?.length ? prefs.contentTypes : ["video", "graphic", "audio", ...DEFAULT_WRITTEN]);
+  // Blog articles are long and rarely used, so they are made on request ("Generate more"), not in every pack.
+  const wanted = new Set(only?.length ? only : (prefs.contentTypes?.length ? prefs.contentTypes : ["video", "graphic", "audio", ...DEFAULT_WRITTEN]).filter((t: string) => t !== "article"));
   const platforms = prefs.platforms?.length ? prefs.platforms : ["instagram", "facebook", "whatsapp"];
   const isAdditional = !!only?.length;
 
@@ -327,7 +330,7 @@ async function stageGenerate(churchId: string, sermonId: string, church: ChurchD
       .map((x) => (x.type === "video" ? `- clip ${fmtTime(x.source?.start || 0)}–${fmtTime(x.source?.end || 0)}: ${x.title}` : `- quote: "${x.content?.quote}"`))
       .join("\n");
     const fresh = await analyseSermon(church, sermon, segments, {
-      clipMin: prefs.clipMin || 30, clipMax: prefs.clipMax || 90, hasTimestamps, maxClips: MAX_CLIPS, maxQuotes: 4, avoid,
+      clipMin: prefs.clipMin || 30, clipMax: prefs.clipMax || 90, hasTimestamps, maxClips: MAX_CLIPS, maxQuotes: MAX_QUOTES, avoid,
     });
     candidates = { clips: fresh.clips, quotes: fresh.quotes };
   }
@@ -376,9 +379,12 @@ async function stageGenerate(churchId: string, sermonId: string, church: ChurchD
 
   // --- Quote graphics (verbatim only) ---
   if (wanted.has("graphic")) {
+    let made = 0;
     for (const q of (candidates.quotes || []) as AnalysisResult["quotes"]) {
+      if (made >= MAX_QUOTES) break;
       const match = verifyQuote(q.text, segments, q.segment);
       if (!match) continue;
+      made++;
       const nearScripture = ((sermon.scriptureReferences || []) as { reference: string; segment: number; verified: boolean }[])
         .filter((r) => r.verified)
         .sort((x, y) => Math.abs(x.segment - match.from) - Math.abs(y.segment - match.from))[0];
@@ -426,12 +432,22 @@ async function stageGenerate(churchId: string, sermonId: string, church: ChurchD
       writtenTypes,
       platforms,
     );
+    // Notes to verify: attach each "unclear transcript" note only to the pieces that actually
+    // draw on that part of the sermon, and point it at the transcript moment so it can be checked.
+    const located = (written.uncertainties || []).map((u) => ({ note: u, seg: locateSegment(u, segments) }));
     const flagsFor = (text: string): AssetFlag[] => {
-      const flags: AssetFlag[] = (written.uncertainties || []).map((u) => ({ code: "unclear_transcript", message: u }));
+      const flags: AssetFlag[] = [];
+      const tw = contentWords(text);
+      for (const u of located) {
+        const near = u.seg >= 0 ? contentWords(windowText(segments, Math.max(0, u.seg - 1), Math.min(segments.length - 1, u.seg + 1))) : new Set<string>();
+        let overlap = 0;
+        near.forEach((w) => tw.has(w) && overlap++);
+        if (u.seg < 0 || overlap >= 3) flags.push({ code: "unclear_transcript", message: u.note, ...(u.seg >= 0 ? { segment: u.seg, at: segments[u.seg].start } : {}) });
+      }
       for (const ref of extractRefs(text)) {
         if (!verifyScripture(ref, segments, null)) flags.push({ code: "scripture_unverified", message: `“${ref}” was not found in the transcript — please check it.` });
       }
-      return flags;
+      return flags.slice(0, 6);
     };
     if (written.summary) {
       await add("summary", { title: written.summary.title || `Summary — ${sermon.title}`, content: written.summary, flags: flagsFor(JSON.stringify(written.summary)) }, false);
@@ -832,3 +848,30 @@ export const reviseAssetTask = onTaskDispatched<RevisePayload>(taskOpts, async (
 });
 
 export { STAGES };
+
+const STOPWORDS = new Set("the and that this with have from your you our for are was were will what when they them their there then than into just about been being which would could should because these those very more most also some such only over even much many like really know going here said says".split(" "));
+function contentWords(text: string) {
+  return new Set((text.toLowerCase().match(/[a-z']{4,}/g) || []).filter((w) => !STOPWORDS.has(w)));
+}
+/** Best-matching transcript segment for a free-text note (quoted words count most). */
+function locateSegment(note: string, segments: Segment[]): number {
+  const quoted = /[“"']([^“”"']{6,})[”"']/.exec(note)?.[1]?.toLowerCase();
+  if (quoted) {
+    const i = segments.findIndex((s) => s.text.toLowerCase().includes(quoted));
+    if (i >= 0) return i;
+  }
+  const nw = contentWords(note);
+  let best = -1;
+  let bestScore = 1.5;
+  segments.forEach((s, i) => {
+    const sw = contentWords(s.text);
+    let hit = 0;
+    sw.forEach((w) => nw.has(w) && hit++);
+    const score = hit / Math.sqrt(sw.size + 3);
+    if (hit >= 2 && score > bestScore / 3 && score * 3 > bestScore) {
+      bestScore = score * 3;
+      best = i;
+    }
+  });
+  return best;
+}

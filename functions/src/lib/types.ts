@@ -71,6 +71,13 @@ export interface Cue {
 export interface AssetFlag {
   code: string;
   message: string;
+  /** Transcript segment / time the note refers to, when known. */
+  segment?: number;
+  at?: number;
+  /** Set when a reviewer has checked it against the recording. */
+  checked?: boolean;
+  checkedBy?: string;
+  checkedByName?: string;
 }
 
 export interface ChurchDoc {

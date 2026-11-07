@@ -11,7 +11,7 @@ import { api } from "../lib/api";
 import { updateChurch, uploadChurchLogo } from "../lib/church";
 import { errMessage } from "../lib/format";
 import { BIBLE_TRANSLATIONS, CONTENT_TYPE_OPTIONS, LANGUAGES, PLATFORMS, TONES } from "../lib/constants";
-import { TEMPLATES } from "../lib/graphic";
+import { QUOTE_FONTS, TEMPLATES } from "../lib/graphic";
 import type { Church, Invite, Member } from "../lib/types";
 import { Button, Card, Checkbox, Input, Modal, Notice, PageHeader, PageLoading, Select, Tabs, useToast } from "../components/ui";
 import { StorageImage } from "../components/bits";
@@ -34,7 +34,7 @@ export default function Settings() {
         onChange={setTab}
         tabs={[
           { id: "profile", label: "Church profile" },
-          { id: "identity", label: "Visual identity" },
+          { id: "identity", label: "Brand kit" },
           { id: "content", label: "Content preferences" },
           { id: "approval", label: "Approvals" },
           { id: "team", label: "Team" },
@@ -182,6 +182,7 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
     secondary: b.secondary || "#F4F4F1",
     accent: b.accent || "#2ECBBE",
     font: b.font || "Archivo",
+    quoteFont: b.quoteFont || "",
     logoPlacement: b.logoPlacement || "top-right",
     captionStyle: b.captionStyle || "clean",
     videoStyle: b.videoStyle || "bold",
@@ -199,9 +200,9 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
         </div>
         <p className="-mt-2 text-xs text-gray-500">The primary colour is the background for audio-only video clips; the accent highlights graphics and waveforms.</p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Select label="Heading font" value={f.v.font} onChange={(e) => f.setV({ ...f.v, font: e.target.value })} hint="Used on quote graphics.">
-            <option>Archivo</option>
-            <option>Inter</option>
+          <Select label="Quote typeface" value={f.v.quoteFont} onChange={(e) => f.setV({ ...f.v, quoteFont: e.target.value })} hint="Used on quote graphics unless a graphic picks its own.">
+            <option value="">Theme default</option>
+            {QUOTE_FONTS.map((q) => <option key={q.id} value={q.id}>{q.label}</option>)}
           </Select>
           {flags.videoStyles && (
             <Select label="Style for new clips" value={f.v.videoStyle} onChange={(e) => f.setV({ ...f.v, videoStyle: e.target.value })} hint="Applied automatically when a sermon is processed. You can change it per clip.">
@@ -222,8 +223,8 @@ function IdentityTab({ church, disabled }: { church: Church; disabled: boolean }
             <option value="bottom-left">Bottom left</option>
             <option value="none">Hidden</option>
           </Select>
-          <Select label="Default graphic template" value={f.v.graphicTemplate} onChange={(e) => f.setV({ ...f.v, graphicTemplate: e.target.value })}>
-            {Object.entries(TEMPLATES).filter(([, t]) => t.group !== "photo").map(([id, t]) => <option key={id} value={id}>{t.label}{t.art ? " (artwork)" : ""}</option>)}
+          <Select label="Default quote theme" value={f.v.graphicTemplate} onChange={(e) => f.setV({ ...f.v, graphicTemplate: e.target.value })}>
+            {Object.entries(TEMPLATES).filter(([id, t]) => t.group === "plain" || t.group === "art" || id === f.v.graphicTemplate).map(([id, t]) => <option key={id} value={id}>{t.label}{t.art ? " (artwork)" : ""}</option>)}
           </Select>
         </div>
       </fieldset>

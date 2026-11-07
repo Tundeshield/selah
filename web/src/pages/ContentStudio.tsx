@@ -13,29 +13,37 @@ type StatusFilter = "all" | "needs_review" | "approved" | "scheduled" | "publish
 type TypeFilter = "all" | "video" | "graphic" | "audio" | "written";
 
 const STATUS_TABS: { id: StatusFilter; label: string }[] = [
-  { id: "all", label: "All content" },
-  { id: "needs_review", label: "Needs review" },
+  { id: "needs_review", label: "To review" },
   { id: "approved", label: "Approved" },
   { id: "scheduled", label: "Scheduled" },
   { id: "published", label: "Published" },
+  { id: "all", label: "All" },
   { id: "failed", label: "Failed" },
+];
+const TYPE_CHIPS: { id: TypeFilter; label: string }[] = [
+  { id: "all", label: "Everything" },
+  { id: "video", label: "Clips" },
+  { id: "graphic", label: "Quote graphics" },
+  { id: "written", label: "Written" },
+  { id: "audio", label: "Audio" },
 ];
 
 export default function ContentStudio() {
   const { assets, sermons, loading, churchId, can } = useChurch();
   const [params, setParams] = useSearchParams();
-  const status = (params.get("status") as StatusFilter) || "all";
+  const status = (params.get("status") as StatusFilter) || (assets.some((a) => ["needs_review", "draft"].includes(a.status)) ? "needs_review" : "all");
   const type = (params.get("type") as TypeFilter) || "all";
   const sermonId = params.get("sermon") || "";
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selecting, setSelecting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
   const toast = useToast();
 
   const set = (k: string, v: string) => {
     const p = new URLSearchParams(params);
-    if (!v || v === "all") p.delete(k);
+    if (!v || (v === "all" && k !== "status")) p.delete(k);
     else p.set(k, v);
     setParams(p, { replace: true });
     setSelected(new Set());
@@ -77,42 +85,49 @@ export default function ContentStudio() {
 
   return (
     <>
-      <PageHeader title="Content Studio" subtitle="Every asset generated from your sermons — review, refine and approve what's ready to share." />
+      <PageHeader title="Content" subtitle="Review, approve and share what your sermons became." />
 
-      <div className="mb-4 flex flex-col gap-3">
-        <Tabs value={status} onChange={(v) => set("status", v)} tabs={STATUS_TABS.map((t) => ({ ...t, count: base.filter((a) => matchStatus(a, t.id)).length }))} />
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-            <input className="field pl-9" placeholder="Search content" aria-label="Search content" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="mb-5 space-y-3">
+        <Tabs value={status} onChange={(v) => set("status", v)} tabs={STATUS_TABS.map((t) => ({ ...t, count: base.filter((a) => matchStatus(a, t.id)).length })).filter((t) => t.id !== "failed" || t.count > 0 || status === "failed")} />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {TYPE_CHIPS.map((t) => (
+              <button key={t.id} type="button" onClick={() => set("type", t.id)} aria-pressed={type === t.id} className={`rounded-full px-3 py-1.5 text-[0.8125rem] font-medium ring-1 transition ${type === t.id ? "bg-ink text-white ring-ink" : "bg-white text-fg ring-gray-200 hover:ring-gray-400"}`}>
+                {t.label}
+              </button>
+            ))}
           </div>
-          <Select aria-label="Content type" value={type} onChange={(e) => set("type", e.target.value)}>
-            <option value="all">All types</option>
-            <option value="video">Video</option>
-            <option value="graphic">Graphics</option>
-            <option value="audio">Audio</option>
-            <option value="written">Written content</option>
-          </Select>
-          <Select aria-label="Sermon" value={sermonId} onChange={(e) => set("sermon", e.target.value)} className="sm:max-w-xs">
-            <option value="">All sermons</option>
-            {sermons.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
-          </Select>
+          <div className="ml-auto flex w-full gap-2 sm:w-auto">
+            <div className="relative flex-1 sm:w-56">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+              <input className="field h-9 pl-9" placeholder="Search" aria-label="Search content" value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
+            {sermons.length > 1 && (
+              <Select aria-label="Sermon" value={sermonId} onChange={(e) => set("sermon", e.target.value)} className="h-9 max-w-[12rem] py-1">
+                <option value="">All sermons</option>
+                {sermons.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+              </Select>
+            )}
+            {allSelectable.length > 1 && (
+              <Button size="sm" variant={selecting ? "primary" : "secondary"} onClick={() => { setSelecting(!selecting); setSelected(new Set()); }}>{selecting ? "Done" : "Select"}</Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {allSelectable.length > 0 && (
+      {selecting && allSelectable.length > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
           <Checkbox
             checked={selected.size > 0 && allSelectable.every((a) => selected.has(a.id))}
             onChange={(v) => setSelected(v ? new Set(allSelectable.map((a) => a.id)) : new Set())}
-            label={<span className="text-fg-muted">Select all reviewable ({allSelectable.length})</span>}
+            label={<span className="text-fg-muted">Select all ({allSelectable.length})</span>}
           />
         </div>
       )}
 
       {filtered.length === 0 ? (
         <EmptyState icon={<LayoutGrid className="h-5 w-5" />} title={assets.length ? "Nothing here" : "No content yet"}>
-          {assets.length ? "No assets match these filters." : "Upload a sermon and its generated content will appear here for review."}
+          {assets.length ? (status === "needs_review" ? "You are all caught up. Nothing is waiting for review." : "Nothing matches these filters.") : "Upload a sermon and its generated content will appear here for review."}
         </EmptyState>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -120,7 +135,7 @@ export default function ContentStudio() {
             <AssetCard
               key={a.id}
               asset={a}
-              selectable={["needs_review", "approved"].includes(a.status)}
+              selectable={selecting && ["needs_review", "approved"].includes(a.status)}
               selected={selected.has(a.id)}
               onSelect={(v) => {
                 const n = new Set(selected);

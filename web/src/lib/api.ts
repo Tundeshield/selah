@@ -34,6 +34,7 @@ export const api = {
   updateAsset: call<C & { assetId: string; expectedVersion?: number; patch: { title?: string; content?: any; source?: { start: number; end: number } } }, { ok: true; version: number; reapprovalRequired?: boolean; rendering?: boolean; unchanged?: boolean }>("updateAsset"),
   submitForReview: call<C & { assetId: string }>("submitForReview"),
   approveAssets: call<C & { assetIds: string[] }, { approved: string[]; skipped: { id: string; reason: string }[] }>("approveAssets"),
+  checkAssetFlag: call<C & { assetId: string; index: number; checked: boolean }, { ok: true }>("checkAssetFlag"),
   polishSocialCaption: call<C & { assetId: string; platform: string; action: string; text: string }, { text: string }>("polishSocialCaption"),
   requestChanges: call<C & { assetIds: string[]; reasons: string[]; instructions: string }, { requested: string[]; skipped: { id: string; reason: string }[] }>("requestChanges"),
   deleteAsset: call<C & { assetId: string }>("deleteAsset"),

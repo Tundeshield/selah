@@ -6,7 +6,7 @@ import { Badge } from "./ui";
 import { ASSET_STATUS, ASSET_TYPE, SERMON_STATUS, assetTypeLabel } from "../lib/constants";
 import type { Asset, AssetStatus, SermonStatus } from "../lib/types";
 import { useStorageImage, useStorageUrl } from "../lib/hooks";
-import { drawGraphic, GraphicSettings, loadImage } from "../lib/graphic";
+import { drawGraphic, GraphicSettings, loadImage, QuoteFont } from "../lib/graphic";
 import { useChurch } from "../context/ChurchContext";
 import { fmtDuration } from "../lib/format";
 
@@ -57,7 +57,7 @@ export function StorageImage({ path, alt, className, fallback }: { path?: string
 }
 
 /** Live canvas rendering of a quote graphic. */
-export function GraphicCanvas({ settings, className, canvasRef }: { settings: GraphicSettings; className?: string; canvasRef?: React.MutableRefObject<HTMLCanvasElement | null> }) {
+export function GraphicCanvas({ settings, className, canvasRef, speaker }: { settings: GraphicSettings; className?: string; canvasRef?: React.MutableRefObject<HTMLCanvasElement | null>; speaker?: string }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
   const { church } = useChurch();
   const [logo, setLogo] = useState<HTMLImageElement | null>(null);
@@ -66,9 +66,10 @@ export function GraphicCanvas({ settings, className, canvasRef }: { settings: Gr
   }, [church?.logoUrl]);
   const photo = useStorageImage(settings.template === "photo" ? settings.photo?.path : null);
   useEffect(() => {
-    if (ref.current) drawGraphic(ref.current, settings, { churchName: church?.name, logo, brandAccent: church?.brand?.accent, photo });
+    const b = church?.brand;
+    if (ref.current) drawGraphic(ref.current, settings, { churchName: church?.name, logo, brandAccent: b?.accent, brandPrimary: b?.primary, brandFont: b?.quoteFont as QuoteFont | undefined, speaker, photo });
     if (canvasRef) canvasRef.current = ref.current;
-  }, [settings, logo, photo, church?.name, church?.brand?.accent, canvasRef]);
+  }, [settings, logo, photo, church?.name, church?.brand, speaker, canvasRef]);
   return <canvas ref={ref} className={clsx("h-auto w-full", className)} role="img" aria-label={`Quote graphic: ${settings.quote}`} />;
 }
 
@@ -94,7 +95,7 @@ export function AssetThumb({ asset, className }: { asset: Asset; className?: str
   if (cat === "graphic") {
     return (
       <div className={clsx("overflow-hidden bg-gray-100", className)}>
-        <GraphicCanvas settings={{ ...asset.content, size: "square" }} className="h-full w-full object-cover" />
+        <GraphicCanvas settings={{ ...asset.content, size: "square" }} speaker={asset.preacher} className="h-full w-full object-cover" />
       </div>
     );
   }
@@ -118,9 +119,11 @@ export function AssetThumb({ asset, className }: { asset: Asset; className?: str
       : c.body || c.reflection || c.introduction || "";
   return (
     <div className={clsx("relative overflow-hidden bg-gray-50 p-4", className)}>
-      <div className="mb-1.5 text-[0.6875rem] font-medium uppercase tracking-wider text-brand-700">{assetTypeLabel(asset)}</div>
-      <div className="font-semibold tracking-tight text-[1.0625rem] leading-snug text-fg line-clamp-2">{c.title || asset.title}</div>
-      <p className="mt-2 text-[0.8125rem] leading-relaxed text-fg-muted line-clamp-4">{String(text || "")}</p>
+      <div className="mb-2 flex items-center justify-between gap-2 text-[0.6875rem] font-medium uppercase tracking-wider text-brand-700">
+        <span>{assetTypeLabel(asset)}</span>
+        {(c.scripture || c.scriptureReferences?.[0]) && <span className="truncate normal-case tracking-normal text-fg-muted">{c.scripture || c.scriptureReferences[0]}</span>}
+      </div>
+      <p className="text-[0.875rem] leading-relaxed text-gray-700 line-clamp-6">{String(text || c.mainTheme || "")}</p>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-gray-50" />
     </div>
   );
